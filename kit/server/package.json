@@ -1,0 +1,21 @@
+{
+  "name": "vue-advanced-lab-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
+    "start:fast": "BOT_RATE=10 node --experimental-strip-types src/index.ts",
+    "snapshot": "node scripts/snapshot.mjs",
+    "test": "node --experimental-strip-types --test --test-reporter=spec test/*.test.ts"
+  },
+  "dependencies": {
+    "socket.io": "4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "4.8.4"
+  }
+}

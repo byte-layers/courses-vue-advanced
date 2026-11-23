@@ -23,6 +23,11 @@ export interface BidPayload {
   productId: number
   amount: number
   bidder: string
+  /**
+   * Optionnel : la version de l'enchère que le client a vue en dernier.
+   * Si elle est périmée, le serveur répond `outbid` (concurrence optimiste).
+   */
+  expectedVersion?: number
 }
 
 export type BidAck =
