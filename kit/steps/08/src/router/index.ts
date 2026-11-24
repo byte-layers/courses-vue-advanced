@@ -1,12 +1,18 @@
-import { createRouter, createWebHistory, type RouterHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw, type RouterHistory } from 'vue-router'
 import { productRoutes } from '@/features/products/routes'
 import { cartRoutes } from '@/features/cart/routes'
 import { authRoutes } from '@/features/auth/routes'
 import { auctionRoutes } from '@/features/auctions/routes'
-import { checkoutRoutes } from '@/features/checkout/routes'
 import { useAuthStore } from '@/features/auth/authStore'
 import { createAuthGuard } from './guards'
 import './types'
+
+// L'option « commande » de l'étape 06 est facultative : ses routes sont ajoutées SI le fichier existe
+// (import.meta.glob ne casse pas le build quand il est absent). Sans l'option, /checkout est une page 404.
+const optionalCheckout = import.meta.glob<{ checkoutRoutes: RouteRecordRaw[] }>('@/features/checkout/routes.ts', {
+  eager: true,
+})
+const checkoutRoutes = Object.values(optionalCheckout).flatMap((module) => module.checkoutRoutes)
 
 /**
  * Fabrique du routeur : l'application lui donne l'historique du navigateur, les tests un historique

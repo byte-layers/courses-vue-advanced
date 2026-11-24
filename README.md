@@ -1,6 +1,6 @@
 # courses-vue-advanced
 
-Un lab byte_layers d'une journée, hors path et hors stack : **Vue avancé : une boutique qui parle en temps réel**
+Un lab byte_layers d'une journée et demie (ou d'une journée avec un parcours resserré), hors path et hors stack : **Vue avancé : une boutique qui parle en temps réel**
 (`vue-shop-day/`). Une boutique Vue 3 sur l'API DummyJSON reçoit des enchères en temps réel. L'apprenant écrit un
 mini moteur de réactivité, range l'état avec des composables et Pinia, sépare l'état serveur de l'état client avec
 TanStack Query, branche un client socket.io, bâtit des composants génériques, mesure puis optimise les rendus, et teste

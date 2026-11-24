@@ -1,12 +1,12 @@
 ---
 title: "Vue avancé : une boutique qui parle en temps réel"
-description: "Lab d'une journée pour développeurs expérimentés : écrire un mini moteur de réactivité, ranger l'état avec des composables et Pinia, séparer l'état serveur de l'état client avec TanStack Query, brancher des enchères en temps réel avec socket.io, bâtir des composants génériques, mesurer avant d'optimiser, puis tester le tout avec Vitest."
+description: "Lab pour développeurs expérimentés, d'une journée et demie ou d'une journée avec un parcours resserré : écrire un mini moteur de réactivité, ranger l'état avec des composables et Pinia, séparer l'état serveur de l'état client avec TanStack Query, brancher des enchères en temps réel avec socket.io, bâtir des composants génériques, mesurer avant d'optimiser, puis tester le tout avec Vitest."
 tags:
   - lab
   - vue
   - typescript
 difficulty: advanced
-duration: 375
+duration: 580
 introTitle: "Le lab"
 requires: "0.4.0"
 options:
@@ -20,16 +20,18 @@ Le point de départ est une boutique de formation connue (Vite, Vuetify, routeur
 
 | Étape | Ce que vous faites | Durée |
 |---|---|---|
-| 01 | Installer le starter et le parcourir | 20 min |
-| 02 | Écrire `miniRef`, `miniComputed`, `miniWatchEffect`, puis un `customRef` de recherche | 40 min |
-| 03 | Composables, store Pinia, persistance, plugin, directive, authentification | 55 min |
-| 04 | Le catalogue en cache avec TanStack Query, mise à jour optimiste | 60 min |
-| 05 | Enchères en temps réel avec socket.io | 60 min |
-| 06 | Composants génériques, Teleport, transitions (option : checkout) | 50 min |
-| 07 | Mesurer les rendus, puis optimiser | 30 min |
-| 08 | Tests unitaires et d'intégration | 65 min |
+| 01 | Installer le starter et le parcourir | 25 min |
+| 02 | Écrire `miniRef`, `miniComputed`, `miniWatchEffect`, puis un `customRef` de recherche | 50 min (+ 20 min facultatives) |
+| 03 | Composables, store Pinia, persistance, plugin, directive, authentification | 2 h |
+| 04 | Le catalogue en cache avec TanStack Query, mise à jour optimiste | 70 min |
+| 05 | Enchères en temps réel avec socket.io | 90 min |
+| 06 | Composants génériques, Teleport, transitions | 80 min (+ 40 min pour l'option checkout) |
+| 07 | Mesurer les rendus, puis optimiser | 50 min |
+| 08 | Tests unitaires et d'intégration | 95 min (+ 25 min si vous écrivez tous les tests proposés) |
 
-L'option du checkout (étape 06) ajoute 30 minutes. La durée affichée ne la compte pas.
+Le total du cœur est d'environ **9 h 40**, soit une journée et demie. La durée affichée du lab est celle du cœur ; les parties facultatives s'y ajoutent.
+
+**Pour tenir en une journée (environ 6 h 20)**, sautez deux étapes grâce aux états de rattrapage : jouez 01, 02, 04, 05, 07 et 08, et lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 03` avant l'étape 04, puis `sh ~/byte-layers/vue/course/kit/catch-up.sh 06` avant l'étape 07. Vous passez alors l'authentification, le plugin et la directive (étape 03) et les composants génériques (étape 06) : vous les retrouvez écrits, et vous pouvez les lire ou les jouer plus tard. L'autre découpage est deux demi-journées : les étapes 01 à 05 (environ 6 h 15), puis 06 à 08 (environ 3 h 45).
 
 **Niveau** : développeur web expérimenté, à l'aise en TypeScript, qui a déjà vu les fondamentaux de Vue (le tutoriel officiel, `create-vue`, Vuetify, le routage, Pinia en survol). Le texte est du Vue pur et va droit au but ; chaque notion nouvelle est dite avant la commande qui s'en sert.
 

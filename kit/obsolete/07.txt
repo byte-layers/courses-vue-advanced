@@ -1,0 +1,2 @@
+# Fichier de la solution 06 qui n'existe plus à la fin de l'étape 07 (remplacé par la version mémoïsée de BidHistory).
+src/features/auctions/components/BidRow.vue

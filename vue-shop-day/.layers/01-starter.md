@@ -7,6 +7,8 @@ Vous allez passer la journée sur une même application : une boutique Vue 3 bra
 
 > **Contrat de niveau.** Ce lab s'adresse à des développeurs web **expérimentés** : TypeScript à l'aise, plusieurs années de framework front. Vous avez déjà vu les fondamentaux de Vue (le tutoriel officiel, `create-vue`, Vuetify, le routage, Pinia en survol). Le texte est du Vue pur, dense et direct. Il ne vous explique pas ce qu'est un composant, mais chaque notion nouvelle est dite avant la commande qui s'en sert, et chaque geste sur un fichier (créer, remplacer, supprimer) est écrit en toutes lettres. Le principe : le concept avant la commande, le pourquoi avant le comment.
 
+**Durée** : environ 25 min.
+
 Cette étape est un **support** : chaque geste est un bloc `exec` que le bouton ▶ lance, et vous pouvez la jouer sans tout comprendre avant de lire la visite. Elle n'a ni exercice ni solution, donc pas d'état de rattrapage : si quelque chose se passe mal, relancez le bloc concerné.
 
 **Ce qu'il faut** :
@@ -22,10 +24,10 @@ Tout vit dans `~/byte-layers/vue` : `course` contient le dépôt du lab (le kit)
 
 ## 01.1 - Vérifier Node et Git
 
-Ce premier contrôle vérifie que Node a au moins la version 22 et que Git répond :
+Ce premier contrôle vérifie que Node est au moins en 22.18 (le minimum du serveur du lab) et que Git répond :
 
 ```verify
-node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)' || { echo "Node $(node -v) est trop ancien : installez Node 22.22 ou plus récent."; exit 1; }
+node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 18) ? 0 : 1)' || { echo "Node $(node -v) est trop ancien : le serveur du lab exige 22.18 au minimum ; installez Node 22.22 ou plus récent."; exit 1; }
 git --version >/dev/null 2>&1 || { echo "Git n'est pas installé : installez-le puis rouvrez le terminal."; exit 1; }
 echo "Node $(node -v) et Git sont disponibles."
 ```
@@ -74,51 +76,38 @@ Installez ensuite les dépendances. Les versions sont figées dans `package.json
 cd ~/byte-layers/vue/shop && npm install
 ```
 
-`npm install` signale cinq vulnérabilités « moderate » : elles viennent de la chaîne d'outils de test (`@vue/test-utils`), pas du code livré, et ne concernent pas ce lab. Ne lancez pas `npm audit fix --force` : il rétrograderait des paquets dont les étapes dépendent.
+`npm install` signale quelques vulnérabilités de niveau « moderate » : elles viennent de la chaîne d'outils de test (`@vue/test-utils`), pas du code livré, et ne concernent pas ce lab. Ne lancez pas `npm audit fix --force` : il rétrograderait des paquets dont les étapes dépendent.
+
+Faites enfin de ce dossier un dépôt Git, avec un premier commit. Le rattrapage (`catch-up.sh`) **écrase** vos fichiers par l'état de fin d'étape : un commit vous laisse comparer (`git diff`) ou revenir en arrière. L'option `-c` donne une identité de commit pour cette seule commande, au cas où Git n'en connaît pas encore ; vos commits suivants utiliseront la vôtre.
+
+```exec
+cd ~/byte-layers/vue/shop && git init -q && git add -A && git -c user.name=Lab -c user.email=lab@example.com commit -q -m "Starter"
+```
 
 ```verify
 D=~/byte-layers/vue/shop
 [ -f "$D/package.json" ] && [ -f "$D/src/main.ts" ] || { echo "Le starter n'est pas copié dans $D : relancez la première commande de la section 01.3."; exit 1; }
 [ -d "$D/node_modules/vue" ] && [ -d "$D/node_modules/vuetify" ] || { echo "Les dépendances ne sont pas installées : lancez npm install dans $D."; exit 1; }
-echo "Le starter est copié et ses dépendances sont installées."
+(cd "$D" && git log --oneline | grep -q .) || { echo "Le dossier n'a pas de commit : relancez la dernière commande de la section 01.3 (git init, puis git commit)."; exit 1; }
+echo "Le starter est copié, installé, et son premier commit est fait."
 ```
 
-## 01.4 - Lancer la boutique
-
-Lancez le serveur de développement de Vite. Il reste ouvert : laissez ce terminal tourner, et ouvrez-en un autre pour la suite.
-
-```exec
-label: "Boutique (laisser tourner)"
----
-cd ~/byte-layers/vue/shop && npm run dev
-```
-
-Ouvrez <http://localhost:5173>. Vous arrivez sur l'accueil (le routeur redirige `/` vers `/home`). Cliquez sur **Produits** : douze cartes apparaissent, avec leur image et leur prix. Cliquez trois fois sur **Ajouter au panier** sur une carte : la pastille de l'icône de panier, en haut à droite, affiche 3. Ouvrez le panier : les trois unités forment une seule ligne, avec ses boutons plus, moins et supprimer, et un total.
-
-Deux accidents sont possibles au premier démarrage :
-
-- Vite 8 optimise les dépendances au premier lancement. Si la console du navigateur affiche `504 (Outdated Optimize Dep)` ou `Failed to fetch dynamically imported module`, **rechargez la page** ; si cela persiste, arrêtez `npm run dev` (Ctrl+C) et relancez-le.
-- Si le port 5173 est déjà pris, Vite choisit 5174 sans insister : lisez l'adresse affichée dans le terminal, ou forcez le port avec `npm run dev -- --port 5173 --strictPort`.
-
-```verify
-curl -fs http://localhost:5173/ | grep -q 'id="app"' || { echo "Rien ne répond sur http://localhost:5173 : lancez le bloc « Boutique (laisser tourner) » de la section 01.4 et laissez-le ouvert."; exit 1; }
-echo "La boutique répond sur http://localhost:5173."
-```
-
-## 01.5 - Le serveur du lab, et le repli hors ligne
+## 01.4 - Le serveur du lab, et le repli hors ligne
 
 Par défaut, l'application interroge **DummyJSON** (https://dummyjson.com), une API publique de produits factices. Deux limites comptent pour la suite : elle exige du réseau, et elle ne retient rien (une écriture renvoie une réponse simulée, sans rien enregistrer ; l'étape 04 y revient). Le lab fournit donc un second serveur, dans `kit/server`, qui joue deux rôles sur le port **4310** :
 
 - une **API de repli**, sous `/api`, qui imite les routes de DummyJSON utilisées par l'application à partir d'un instantané de 194 produits (les images, elles, viennent toujours de `cdn.dummyjson.com`) ;
 - les **enchères en temps réel** (socket.io) de l'étape 05. Vous ne l'écrirez jamais : il est déterministe, ses bots jouent toujours la même partie.
 
-Installez ses dépendances une fois pour toutes :
+Ce serveur est aussi le **repli hors ligne** : si DummyJSON est injoignable chez vous (pas de réseau, réseau filtré, panne), la boutique pourra interroger `/api` ici à la place. Il sert les mêmes routes que celles de l'application, authentification comprise (`/api/auth/login`, `/api/auth/me`, `/api/auth/refresh`), dont l'étape 03 se sert. Vous le démarrez donc dans tous les cas : il n'est jamais de trop.
+
+Organisez vos terminaux : un par processus qui reste ouvert. Le **terminal 1** accueillera la boutique (section 01.5), le **terminal 2** le serveur du lab, et un **terminal 3** vous sert pour les commandes courtes. Dans le terminal 3, installez les dépendances du serveur une fois pour toutes :
 
 ```exec
 cd ~/byte-layers/vue/course/kit/server && npm install
 ```
 
-Démarrez-le :
+Démarrez ensuite le serveur dans le terminal 2, qui restera occupé tant qu'il tourne :
 
 ```exec
 label: "Serveur du lab (laisser tourner)"
@@ -129,24 +118,46 @@ cd ~/byte-layers/vue/course/kit/server && npm start
 Le terminal affiche `Serveur du lab sur http://localhost:4310` et la liste de ses adresses. Ces deux commandes sont aussi celles du repli : `api:local` désigne, dans ce lab, `cd ~/byte-layers/vue/course/kit/server && npm install && npm start`.
 
 ```verify
-curl -fs http://localhost:4310/health | grep -q '"status":"ok"' || { echo "Le serveur du lab ne répond pas sur le port 4310 : lancez le bloc « Serveur du lab (laisser tourner) » de la section 01.5 et laissez-le ouvert."; exit 1; }
+curl -fs http://localhost:4310/health | grep -q '"status":"ok"' || { echo "Le serveur du lab ne répond pas sur le port 4310 : lancez le bloc « Serveur du lab (laisser tourner) » de la section 01.4 et laissez-le ouvert."; exit 1; }
 curl -fs "http://localhost:4310/api/products?limit=1" | grep -q '"products"' || { echo "L'API de repli ne répond pas : relisez la sortie du terminal du serveur."; exit 1; }
 echo "Le serveur du lab répond, API de repli comprise."
 ```
 
-**Si DummyJSON est injoignable** (pas de réseau, réseau filtré, panne), la page Produits affiche une alerte rouge à la place des cartes. Dites alors à l'application d'utiliser l'API de repli : l'URL de base vient de la variable `VITE_API_URL`, que Vite lit dans un fichier `.env.local` (jamais versionné). Le starter en fournit un modèle :
+**Si DummyJSON est injoignable**, la page Produits affichera, à l'étape suivante, une alerte rouge à la place des cartes. Dites dès maintenant à l'application d'utiliser l'API de repli : l'URL de base vient de la variable `VITE_API_URL`, que Vite lit dans un fichier `.env.local` (jamais versionné). Le starter en fournit un modèle :
 
 ```exec
 cd ~/byte-layers/vue/shop && cp .env.local.example .env.local
 ```
 
-Vite lit ses variables au démarrage : arrêtez `npm run dev` (Ctrl+C) et relancez-le, puis rechargez la page. L'application interroge maintenant `http://localhost:4310/api` ; supprimez `.env.local` et relancez pour revenir à DummyJSON. Si DummyJSON répond chez vous, la copie est facultative, mais elle ne gêne pas : les tests du lab visent toujours DummyJSON, quel que soit ce fichier.
+Vite lit ses variables au démarrage : l'application interrogera `http://localhost:4310/api`. Pour revenir plus tard à DummyJSON, supprimez le fichier avec `rm ~/byte-layers/vue/shop/.env.local` et relancez `npm run dev`. Si DummyJSON répond chez vous, la copie est facultative, mais elle ne gêne pas : les tests du lab visent toujours DummyJSON, quel que soit ce fichier, et Git l'ignore (`*.local`).
 
 📖 [Les variables d'environnement avec Vite](https://vite.dev/guide/env-and-mode).
 
+## 01.5 - Lancer la boutique
+
+Lancez le serveur de développement de Vite dans le **terminal 1**. Il reste ouvert : laissez ce terminal tourner.
+
+```exec
+label: "Boutique (laisser tourner)"
+---
+cd ~/byte-layers/vue/shop && npm run dev
+```
+
+Si les cartes de produits ne s'affichent pas (alerte rouge), DummyJSON est injoignable : revenez à la section 01.4, créez `.env.local`, puis arrêtez Vite (Ctrl+C) et relancez-le. Ouvrez <http://localhost:5173>. Vous arrivez sur l'accueil (le routeur redirige `/` vers `/home`). Cliquez sur **Produits** : douze cartes apparaissent, avec leur image et leur prix. Cliquez trois fois sur **Ajouter au panier** sur une carte : la pastille de l'icône de panier, en haut à droite, affiche 3. Ouvrez le panier : les trois unités forment une seule ligne, avec ses boutons plus, moins et supprimer, et un total.
+
+Deux accidents sont possibles au premier démarrage :
+
+- Vite 8 optimise les dépendances au premier lancement. Si la console du navigateur affiche `504 (Outdated Optimize Dep)` ou `Failed to fetch dynamically imported module`, **rechargez la page** ; si cela persiste, arrêtez `npm run dev` (Ctrl+C) et relancez-le.
+- Si le port 5173 est déjà pris, Vite choisit 5174 sans insister : lisez l'adresse affichée dans le terminal, ou forcez le port avec `npm run dev -- --port 5173 --strictPort`.
+
+```verify
+curl -fs http://localhost:5173/ | grep -q 'id="app"' || { echo "Rien ne répond sur http://localhost:5173 : lancez le bloc « Boutique (laisser tourner) » de la section 01.5 et laissez-le ouvert."; exit 1; }
+echo "La boutique répond sur http://localhost:5173."
+```
+
 ## 01.6 - Les conventions du projet : `AGENTS.md` et `data-testid`
 
-Le starter porte ses règles dans un fichier, `AGENTS.md`, à la racine du projet. Le format est lu par la plupart des assistants de code : un assistant que vous solliciterez dans la journée applique les mêmes règles que vous, sans que vous les répétiez. Ouvrez `~/byte-layers/vue/shop/AGENTS.md` dans votre éditeur et lisez-le en entier ; voici ce qu'il fixe.
+Le starter porte ses règles dans un fichier, `AGENTS.md`, à la racine du projet. C'est une convention de nom : plusieurs outils de code assisté lisent un fichier de ce nom pour connaître les règles d'un projet, et vous pouvez aussi vous en servir comme aide-mémoire. Ici, ce sont les règles que le lab applique. Ouvrez `~/byte-layers/vue/shop/AGENTS.md` dans votre éditeur et lisez-le en entier ; voici ce qu'il fixe.
 
 | Règle | Contenu |
 |---|---|
@@ -168,7 +179,7 @@ La zone est le composant ou la page qui porte l'élément. Un élément répét�
 
 ## 01.7 - Visite : le catalogue chargé à la demande
 
-Vous avez vu le catalogue tourner ; voyons comment il est branché. Le routeur (`src/router/index.ts`) ne déclare aucune page en dur : il assemble des tableaux de routes que chaque fonctionnalité exporte. Voici la route de la liste de produits, dans `src/features/products/routes.ts` :
+Vous avez vu le catalogue tourner ; voyons comment il est branché. Le routeur (`src/router/index.ts`) charge ses pages à la demande et assemble les tableaux de routes que chaque fonctionnalité exporte. Voici la route de la liste de produits, dans `src/features/products/routes.ts` :
 
 ```ts
 {
@@ -183,6 +194,8 @@ Le composant n'est pas importé en haut du fichier mais par une fonction qui ren
 ```exec
 cd ~/byte-layers/vue/shop && npm run build | grep -E 'dist/assets/[A-Za-z]+Page-.*\.js'
 ```
+
+Si rien ne s'affiche, la construction a échoué : lancez `npm run build` seul pour lire l'erreur.
 
 > 🔍 **Comprendre la commande**
 >
@@ -229,10 +242,10 @@ export function useInjectedCart(): Cart {
 }
 ```
 
-Ce montage marche, mais il a des angles que l'étape 03 traite : la clé est une simple chaîne (`'cart'`), donc rien n'empêche de se tromper de type à l'injection ; le panier est perdu au rechargement de la page ; et il faut choisir, sciemment, entre ce montage, un composable partagé et un store Pinia. Lisez aussi le test fourni, `useCart.spec.ts` : il appelle `useCart()` sans composant ni application, ce qui est possible parce que la fabrique n'a besoin d'aucun contexte. Lancez-le avec le reste de la suite :
+Ce montage marche, mais il a des angles que l'étape 03 traite : la clé est une simple chaîne (`'cart'`), donc rien n'empêche de se tromper de type à l'injection ; le panier est perdu au rechargement de la page ; et il faut choisir, sciemment, entre ce montage, un composable partagé et un store Pinia. Lisez aussi le test fourni, `useCart.spec.ts` : il appelle `useCart()` sans composant ni application, ce qui est possible parce que la fabrique n'a besoin d'aucun contexte. Lancez-le avec le reste de la suite, en une seule passe (`--run`, pas de mode interactif), dans le terminal 3 :
 
 ```exec
-cd ~/byte-layers/vue/shop && npm test
+cd ~/byte-layers/vue/shop && npm test -- --run
 ```
 
 Vitest annonce `Tests  2 passed (2)`.

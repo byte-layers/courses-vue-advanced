@@ -72,10 +72,12 @@ Réponses de `auction:bid`, toujours avec `price` et `version` courants :
 | `POST /control/bot-bid` `{ productId, amount? }` | un bot enchérit tout de suite (409 si refusée) |
 | `POST /control/reset` `{ durationSeconds? }` | remet les 5 enchères à zéro, rejoue les bots depuis la graine |
 | `POST /control/close` `{ productId }` | ferme une enchère tout de suite |
+| `POST /control/stall` `{ ms? }` | gèle le serveur `ms` millisecondes (défaut 8000, plafond 30000) : il cesse de traiter les événements entrants des sockets et de diffuser ; les `auction:bid` reçus sont mis en file, traités dans l'ordre avec leur ack à la fin du délai. Les connexions restent ouvertes et les pings de socket.io reçoivent leur réponse (aucune coupure). Réponse `{ "stalledUntil": <heure serveur en ms> }` |
 | `POST /control/drop-connection` `{ hard? }` | coupe tous les sockets comme une panne réseau : le client se reconnecte seul. Avec `{ "hard": true }`, déconnexion volontaire du serveur : le client ne se reconnecte pas tout seul (`socket.connect()`) |
 
 ```bash
 curl -X POST localhost:4310/control/bot-bid -H 'Content-Type: application/json' -d '{"productId":123}'
+curl -X POST localhost:4310/control/stall -H 'Content-Type: application/json' -d '{"ms":8000}'
 curl -X POST localhost:4310/control/reset -H 'Content-Type: application/json' -d '{"durationSeconds":30}'
 ```
 

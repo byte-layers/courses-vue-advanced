@@ -1,0 +1,4 @@
+# Fichiers de la solution 02 qui n'existent plus à la fin de l'étape 03 (remplacés par cartStore.ts, Pinia).
+src/features/cart/CartProvider.vue
+src/features/cart/useCart.spec.ts
+src/features/cart/useCart.ts

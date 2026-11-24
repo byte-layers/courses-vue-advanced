@@ -5,13 +5,15 @@ description: "Compter les rendus d'une page d'enchères soumise à dix mises par
 
 Sur la page des enchères, le serveur sait envoyer dix mises par seconde sur l'iPhone. L'application reste juste, mais chaque mise déclenche des rendus, et on ne sait pas encore combien. Cette étape suit la règle qui évite les optimisations inutiles : **mesurer d'abord**. Vous relevez un nombre de rendus, vous formulez une hypothèse, vous essayez le correctif que tout le monde essaie (`v-memo`), vous mesurez de nouveau, et vous constatez qu'il ne change rien. Vous cherchez alors la vraie cause et vous corrigez. Trois optimisations plus petites suivent : des données en lecture seule, une modale chargée à la demande, un catalogue qui garde son état.
 
-> 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 06, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 06` : le script copie le code attendu dans `~/byte-layers/vue/shop` et écrase vos fichiers du même nom, pensez à les committer avant.
+> 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 06, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 06` : le script copie le code attendu dans `~/byte-layers/vue/shop` (l'option checkout de l'étape 06 comprise) et écrase vos fichiers du même nom, pensez à les committer avant.
+
+**Durée** : environ 50 minutes.
 
 Un point d'honnêteté sur cette étape : **ce qu'on mesure ici, c'est un nombre de rendus de composants**, pas un temps. Le compteur est précis et reproductible ; il ne dit pas combien de millisecondes un rendu coûte sur votre machine. Les chiffres cités viennent d'un relevé réel, et jamais le texte ne parle de « fois plus rapide ».
 
 ## 07.1 - Support : le serveur en ticker rapide et les fichiers fournis
 
-Cette section est un **support** : chaque geste est une commande. Le serveur du lab sait jouer un **ticker rapide** : dix mises par seconde, de 0,01 € chacune, sur l'enchère de l'iPhone. C'est la charge de toute l'étape. Si le serveur de l'étape 05 tourne encore dans un terminal, arrêtez-le avec `Ctrl+C`, puis relancez-le dans ce mode (ses paquets sont déjà installés depuis l'étape 05) :
+Cette section est un **support** : chaque geste est une commande. Cette étape fait tourner deux processus longs et lance des commandes à côté : ouvrez **trois terminaux**, que ce texte appelle « serveur » (port 4310), « application » (port 5173) et « commandes » (tout le reste). Le serveur du lab sait jouer un **ticker rapide** : dix mises par seconde, de 0,01 € chacune, sur l'enchère de l'iPhone. C'est la charge de toute l'étape. Dans le terminal « serveur », arrêtez celui de l'étape 05 s'il tourne encore (`Ctrl+C`), puis relancez-le dans ce mode (ses paquets sont déjà installés depuis l'étape 05) :
 
 ```exec
 label: "Serveur d'enchères, ticker rapide (laisser tourner)"
@@ -21,7 +23,7 @@ cd ~/byte-layers/vue/course/kit/server && npm run start:fast
 
 Le terminal affiche `ticker rapide 10/s`. Les bots ordinaires restent actifs : ils surenchérissent aussi sur les quatre autres enchères, toutes les quatre secondes. Pour un ticker pur, relancez le serveur avec `BOT_INTERVAL_MS=60000 npm run start:fast` (un bot ordinaire par minute) ; ce n'est pas nécessaire ici.
 
-Copiez ensuite les fichiers fournis. **Lisez d'abord ce tableau : cinq fichiers de votre application sont remplacés.**
+Copiez ensuite les fichiers fournis, depuis le terminal « commandes ». **Lisez d'abord ce tableau : cinq fichiers de votre application sont remplacés**, pour que tout le monde parte du même état mesurable, celui de l'étape 06 avec ses compteurs.
 
 ```exec
 cp -R ~/byte-layers/vue/course/kit/steps/07/src/. ~/byte-layers/vue/shop/src/
@@ -39,7 +41,7 @@ cp -R ~/byte-layers/vue/course/kit/steps/07/src/. ~/byte-layers/vue/shop/src/
 
 Si vous aviez ajouté vos propres retouches à l'un des fichiers remplacés, reportez-les après coup : le kit ne peut pas deviner.
 
-L'application doit tourner pour la suite. Si `npm run dev` tourne encore depuis l'étape 06, laissez-le : Vite recharge à chaud. Sinon, lancez-le :
+L'application doit tourner pour la suite. Si `npm run dev` tourne encore depuis l'étape 06 dans le terminal « application », laissez-le : Vite recharge à chaud. Sinon, lancez-le dans ce terminal :
 
 ```exec
 label: "Application (laisser tourner)"
@@ -68,7 +70,7 @@ export function useRenderCount(name: string) {
 }
 ```
 
-Deux choix méritent d'être lus. Les compteurs sont dans une `Map`, **pas dans un `ref`** : un `ref` incrémenté dans `onBeforeUpdate` provoquerait un rendu, qui incrémenterait le `ref`, et la boucle ne s'arrêterait plus. Et le compteur ne fait rien en production (`import.meta.env.DEV`). Les trois composants du chemin chaud l'appellent déjà : `AuctionCard`, `BidHistory` et `BidRow`.
+Deux choix méritent d'être lus. Les compteurs sont dans une `Map`, **pas dans un `ref`** : un `ref` incrémenté dans `onBeforeUpdate` provoquerait un rendu, qui incrémenterait le `ref`, et la boucle ne s'arrêterait plus. Et le compteur ne fait rien en production (`import.meta.env.DEV`). Les trois composants du chemin chaud l'appellent déjà : `AuctionCard`, `BidHistory` et `BidRow`. Ces compteurs restent dans le code à la fin de l'étape, inertes en production ; vous pouvez les laisser comme outil de mesure du projet, ou les retirer avant de livrer.
 
 En développement, le fichier expose aussi deux fonctions dans la console du navigateur, `__renderCounts()` et `__resetRenderCounts()`, et la page des enchères affiche le panneau « Rendus (dev) » sous la grille. Relevons la **ligne de base**, avant de toucher au code :
 
@@ -134,19 +136,20 @@ Deux raisons s'additionnent.
 
 La première est propre à `v-memo` dans un `v-for` : son cache est **positionnel**. Le code que Vue compile range, pour chaque position `i`, les valeurs du dernier rendu, et les compare à celles de la position `i` au rendu suivant. Quand une offre s'insère en tête, la position `i` contient maintenant l'offre qui était en `i - 1` : les valeurs diffèrent partout, le cache est invalidé partout. `v-memo` sert à une liste dont les éléments gardent leur place (une longue liste qu'on filtre, un tableau dont on édite une cellule) ; une insertion en tête est son pire cas.
 
-La seconde est la vraie cause, et elle vaut même sans `v-memo` : **un composant enfant d'un `TransitionGroup` (ou d'un `Transition`) est refait à chaque rendu de son parent, même si ses props sont identiques.** Vue doit lui réappliquer ses crochets de transition, alors elle ne saute pas son rendu. La mesure l'a montré : avec un indicateur booléen stable à la place de `index` (`:leading="index === 0"`), le compte reste à 1 000 avec le vrai `TransitionGroup`. Un détail de test à retenir : l'utilitaire de test de Vue **remplace `TransitionGroup` par un faux** qui n'applique rien aux enfants, et ce faux masque ce coût. C'est pour cela que `BidHistory.render.spec.ts` demande le vrai (`stubs: { TransitionGroup: false }`).
+La seconde est la vraie cause, et elle vaut même sans `v-memo` : **un composant enfant d'un `TransitionGroup` (ou d'un `Transition`) est refait à chaque rendu de son parent, même si ses props sont identiques.** Vue doit lui réappliquer ses crochets de transition, alors elle ne saute pas son rendu. Cette règle n'est pas dans la documentation : elle se constate par la mesure ci-dessus, et se lit dans le code source de Vue (`shouldUpdateComponent`, qui décide de refaire un composant portant une transition). La mesure l'a montré : avec un indicateur booléen stable à la place de `index` (`:leading="index === 0"`), le compte reste à 1 000 avec le vrai `TransitionGroup`. Un détail de test à retenir : l'utilitaire de test de Vue **remplace `TransitionGroup` par un faux** qui n'applique rien aux enfants, et ce faux masque ce coût. C'est pour cela que `BidHistory.render.spec.ts` demande le vrai (`stubs: { TransitionGroup: false }`). Le total de 1 000 est exact : le test affiche 20 lignes et en reçoit 50 de plus, une à une, soit 50 offres × 20 lignes refaites.
 
-Que corriger, alors ? On peut ne pas animer une liste chaude, ou grouper les mises à jour. Le correctif retenu garde l'animation : **les lignes deviennent des éléments, pas des composants**. Un `<li>` enfant du groupe n'a pas de rendu propre : c'est le rendu de `BidHistory`, un seul par offre, qui les met à jour. Le coût passe de vingt-deux rendus par offre à environ deux.
+Que corriger, alors ? On peut ne pas animer une liste chaude, ou grouper les mises à jour. Le correctif retenu garde l'animation : **les lignes deviennent des éléments, pas des composants**. Un `<li>` enfant du groupe n'a pas de rendu propre : c'est le rendu de `BidHistory`, un seul par offre, qui les met à jour. Le coût passe de vingt-deux rendus par offre à environ deux. C'est un **compromis, pas une règle** : on perd un composant de ligne réutilisable et testable seul, en échange d'un rendu bien moins coûteux sur un chemin chaud. Sur une liste qui reçoit une mise de temps en temps, garder le composant est le bon choix.
 
 Ouvrez `src/features/auctions/components/BidHistory.vue`. Il importe `BidRow` et lui délègue chaque ligne.
 
-**À vous** : mettez le contenu de `BidRow.vue` directement dans `BidHistory.vue`, sous forme d'un `<li>` avec la même `key`, puis supprimez l'import de `BidRow`, la directive `v-memo` de la section précédente et le commentaire `TODO — À écrire`. Supprimez aussi le fichier `src/features/auctions/components/BidRow.vue`, qui n'est plus utilisé. Gardez `useRenderCount('BidHistory')`.
+**À vous** : mettez le contenu de `BidRow.vue` directement dans `BidHistory.vue`, sous forme d'un `<li>` avec la même `key`, puis supprimez l'import de `BidRow`, la directive `v-memo` de la section précédente et le commentaire `TODO — À écrire`. Supprimez aussi le fichier `src/features/auctions/components/BidRow.vue`, qui n'est plus utilisé (aucun test fourni ne l'importe ; le rattrapage de l'étape 07 le supprime lui aussi). Gardez `useRenderCount('BidHistory')`.
 
 **Critères :**
 
 - chaque ligne est un `<li>` avec `class="bid-row"` et `data-testid="bid-row"`, clé `bid.version`, et affiche l'enchérisseur, le prix (`formatMoney`), l'heure et, sur la première ligne seulement, une pastille `data-testid="bid-row-leading"` « en tête » ;
 - `BidHistory.vue` ne rend plus aucun composant par ligne, et garde son `TransitionGroup` ;
-- cinquante offres coûtent **au plus deux rendus de composant par offre**, tous composants confondus, et l'affichage reste exact : la dernière offre en tête, une seule ligne « en tête » ;
+- le fichier `BidRow.vue` n'existe plus et `v-memo` a disparu de `BidHistory.vue` ;
+- cinquante offres coûtent **au plus deux rendus de composant par offre** (soit 100 au plus pour 50 offres), tous composants confondus, et l'affichage reste exact : la dernière offre en tête, une seule ligne « en tête » ;
 - le style de la ligne (`.bid-row` : `display: flex`, `align-items: center`, `gap: 12px`, `padding: 4px 0`) passe dans le `<style scoped>` de `BidHistory.vue`.
 
 ```hint
@@ -235,17 +238,21 @@ const time = new Intl.DateTimeFormat('fr-FR', { timeStyle: 'medium' })
 D=~/byte-layers/vue/shop
 F="$D/src/features/auctions/components/BidHistory.vue"
 grep -q 'À écrire' "$F" && { echo "BidHistory.vue contient encore le commentaire « TODO — À écrire » : corrigez le composant, puis supprimez ce commentaire."; exit 1; }
-(cd "$D" && npx vitest run src/features/auctions/components/BidHistory.render.spec.ts >/dev/null 2>&1) || { echo "Le test de rendus échoue : lancez « npx vitest run src/features/auctions/components/BidHistory.render.spec.ts » dans ~/byte-layers/vue/shop. Sa ligne « rendus pour 50 offres » donne le compte : il doit rester sous 100, avec la dernière offre en tête et une seule pastille « en tête »."; exit 1; }
+[ -e "$D/src/features/auctions/components/BidRow.vue" ] && { echo "Supprimez le fichier src/features/auctions/components/BidRow.vue : il n'est plus utilisé."; exit 1; }
+grep -qE "import BidRow|<BidRow" "$F" && { echo "BidHistory.vue mentionne encore BidRow : les lignes doivent être des éléments <li>, pas un composant."; exit 1; }
+grep -q 'v-memo' "$F" && { echo "Retirez v-memo de BidHistory.vue : il n'a rien changé à la section 07.3, et les lignes sont maintenant des éléments."; exit 1; }
+grep -q "useRenderCount('BidHistory')" "$F" || { echo "Gardez useRenderCount('BidHistory') dans BidHistory.vue : c'est lui qui alimente la mesure."; exit 1; }
+(cd "$D" && npx vitest run src/features/auctions/components/BidHistory.render.spec.ts >/dev/null 2>&1) || { echo "Le test de rendus échoue : lancez « npx vitest run src/features/auctions/components/BidHistory.render.spec.ts » dans ~/byte-layers/vue/shop. Sa ligne « rendus pour 50 offres » donne le compte : il doit rester à 100 au plus, avec la dernière offre en tête et une seule pastille « en tête »."; exit 1; }
 echo "Cinquante offres coûtent au plus deux rendus chacune, et l'historique reste exact."
 ```
 
-Relevez une dernière fois les compteurs dans le navigateur, avec la même procédure qu'à la section 07.2. Sur la machine du lab : `BidHistory` 98, `AuctionCard` 105, soit **203 rendus de composants contre 2 207, environ onze fois moins**. `BidRow` a disparu du relevé. On ne dit rien de plus que ce que le compteur sait : le nombre de rendus a baissé d'un facteur onze, le temps gagné reste à mesurer avec le profileur du navigateur.
+Relevez une dernière fois les compteurs dans le navigateur, avec la même procédure qu'à la section 07.2. Sur la machine du lab : `BidHistory` 98, `AuctionCard` 105, soit **203 rendus de composants contre 2 207, environ onze fois moins sur cette machine**. `BidRow` a disparu du relevé. On ne dit rien de plus que ce que le compteur sait : le nombre de rendus a baissé d'un facteur onze, le temps gagné reste à mesurer avec le profileur du navigateur.
 
 ```acknowledge
 J'ai relevé les compteurs après le correctif : BidRow n'apparaît plus et le total est de l'ordre de 200 rendus pour dix secondes
 ```
 
-À retenir : `v-memo` n'est pas inutile, il vise un autre cas. Un composant qui ne bouge pas de place, dans une liste longue, hors d'un groupe de transitions. La mesure décide, pas l'intuition.
+À retenir : `v-memo` n'est pas inutile, il vise un autre cas : des éléments qui gardent leur place dans une liste longue. Ici, on n'a mesuré que l'insertion en tête d'une liste animée, et c'est ce cas-là qu'il ne répare pas. La mesure décide, pas l'intuition.
 
 > 📖 [Vue : `TransitionGroup`](https://vuejs.org/guide/built-ins/transition-group.html) · [Vue : mises à jour, optimisations](https://vuejs.org/guide/best-practices/performance.html#update-optimizations)
 
@@ -253,7 +260,7 @@ J'ai relevé les compteurs après le correctif : BidRow n'apparaît plus et le t
 
 Par défaut, TanStack Query rend la propriété `data` **profondément réactive** : chaque enchère du cache, chaque offre de l'historique est enveloppée dans un `Proxy`. C'est utile quand on modifie un objet en place. Ici, on ne le fait jamais : le socket **remplace** une enchère dans le cache par une copie à jour (`setQueryData`, étape 05). Des `Proxy` sur des objets qu'on ne mute pas sont un coût sans contrepartie.
 
-L'option `shallow: true` de `useQuery` fait de `data` un **`shallowRef`** (étape 02) : seul le remplacement de la valeur est réactif, ni le tableau ni son contenu ne sont enveloppés. Mise en garde sur la portée : la mesure de la section précédente n'a pas chiffré ce gain. C'est un correctif **de principe**, sûr parce que les objets ne sont jamais modifiés, et il ne se justifie que par cette garantie.
+L'option `shallow: true` de `useQuery` fait de `data` un **`shallowRef`** (étape 02) : seul le remplacement de la valeur est réactif, ni le tableau ni son contenu ne sont enveloppés. L'option est propre à `@tanstack/vue-query` : sa page de documentation de la réactivité ne la décrit pas, elle est définie dans les fichiers de types du paquet installé (5.108.4), où son commentaire dit « Return data in a shallow ref object » (cherchez `shallow` dans `node_modules/@tanstack/vue-query/build/modern/*.d.ts`). Mise en garde sur la portée : la mesure de la section précédente n'a pas chiffré ce gain. C'est un correctif **de principe**, sûr parce que les objets ne sont jamais modifiés, et il ne se justifie que par cette garantie, pas par un relevé.
 
 Ouvrez `src/features/auctions/useAuctions.ts`. Il déclare deux requêtes alimentées par le socket, `useAuctions` et `useBidHistory`.
 
@@ -301,17 +308,17 @@ D=~/byte-layers/vue/shop
 echo "Les données du cache des enchères sont en lecture seule, et restent à jour."
 ```
 
-> 📖 [Vue : `shallowRef`](https://vuejs.org/api/reactivity-advanced.html#shallowref) · [Vue : réduire le coût de réactivité des grandes structures immuables](https://vuejs.org/guide/best-practices/performance.html#reduce-reactivity-overhead-for-large-immutable-structures) · [TanStack Query pour Vue : réactivité](https://tanstack.com/query/v5/docs/framework/vue/reactivity)
+> 📖 [Vue : `shallowRef`](https://vuejs.org/api/reactivity-advanced.html#shallowref) · [Vue : réduire le coût de réactivité des grandes structures immuables](https://vuejs.org/guide/best-practices/performance.html#reduce-reactivity-overhead-for-large-immutable-structures) · [TanStack Query pour Vue : réactivité](https://tanstack.com/query/v5/docs/framework/vue/reactivity) (le contexte, pas l'option `shallow`)
 
 ## 07.6 - Charger la modale à la demande : `defineAsyncComponent`
 
 La modale d'enchère (formulaire, historique, animations) n'est utile qu'après un clic, mais `AuctionsPage.vue` l'importe en tête de fichier : son code part dans le même fichier JavaScript que la page, et il est téléchargé avec elle. `defineAsyncComponent` prend une fonction qui renvoie un `import()` dynamique : le bundler coupe alors le module en un **fichier séparé**, que le navigateur ne télécharge qu'au premier affichage du composant.
 
-Un effet à connaître : le composant devient **asynchrone**. Le premier clic affiche la modale un court instant plus tard, le temps du téléchargement, puis les suivants sont immédiats. C'est pour cela que le test existant `AuctionsPage.spec.ts` a été mis à jour : il attend la modale avec `vi.waitFor`, et ne se contente plus d'un `flushPromises`, qui ne suffit pas pour un chargement de module.
+Cette optimisation non plus n'est pas chiffrée en temps : elle déplace du code hors du premier chargement, ce que la construction de production montre plus bas, sans mesurer le gain pour un visiteur. Un effet à connaître : le composant devient **asynchrone**. Le premier clic affiche la modale un court instant plus tard, le temps du téléchargement, puis les suivants sont immédiats. C'est pour cela que le test existant `AuctionsPage.spec.ts` a été mis à jour : il attend la modale avec `vi.waitFor`, et ne se contente plus d'un `flushPromises`, qui ne suffit pas pour un chargement de module.
 
 Ouvrez `src/features/auctions/pages/AuctionsPage.vue`.
 
-**À vous** : remplacez l'import statique de la modale par `defineAsyncComponent`, et supprimez le commentaire `TODO — À écrire`.
+**À vous** : remplacez l'import statique de la modale par `defineAsyncComponent`, et supprimez le commentaire `TODO`.
 
 **Critères :**
 
@@ -345,12 +352,14 @@ const { clockOffset, reconnect } = useAuctionSocket()
 ```verify
 D=~/byte-layers/vue/shop
 F="$D/src/features/auctions/pages/AuctionsPage.vue"
-grep -q 'À écrire' "$F" && { echo "AuctionsPage.vue contient encore le commentaire « TODO — À écrire » : chargez la modale avec defineAsyncComponent, puis supprimez ce commentaire."; exit 1; }
+grep -q 'TODO' "$F" && { echo "AuctionsPage.vue contient encore un commentaire TODO : chargez la modale avec defineAsyncComponent, puis supprimez ce commentaire."; exit 1; }
+grep -q 'defineAsyncComponent' "$F" || { echo "AuctionsPage.vue doit déclarer la modale avec defineAsyncComponent."; exit 1; }
+grep -qE "^import AuctionModal" "$F" && { echo "Supprimez l'import statique de AuctionModal dans AuctionsPage.vue : la modale se charge avec defineAsyncComponent."; exit 1; }
 (cd "$D" && npx vitest run src/features/auctions/pages/AuctionsPage.lazy.spec.ts src/features/auctions/pages/AuctionsPage.spec.ts >/dev/null 2>&1) || { echo "Les tests de la page échouent : lancez « npx vitest run src/features/auctions/pages » dans ~/byte-layers/vue/shop. Le test « chargée à la demande » exige que le module de la modale ne soit pas chargé avant la première ouverture : supprimez l'import statique."; exit 1; }
 echo "La modale est un composant asynchrone : son code n'est chargé qu'à la première ouverture."
 ```
 
-Le résultat se voit dans la construction de production : lancez-la et cherchez, dans la liste des fichiers produits, un fichier `AuctionModal-….js` à part, d'environ 7 ko.
+Le résultat se voit dans la construction de production : lancez-la dans le terminal « commandes » et cherchez, dans sa sortie (la liste des fichiers de `dist/assets/`), un fichier `AuctionModal-….js` à part, d'environ 7 ko sur la machine du lab (la taille dépend de ce que la modale importe).
 
 ```exec
 cd ~/byte-layers/vue/shop && npm run build
@@ -362,7 +371,7 @@ cd ~/byte-layers/vue/shop && npm run build
 
 Allez sur `/products`, passez à la page 2, tapez une recherche, puis cliquez sur « Enchères » et revenez : le catalogue est reparti de zéro, page 1, recherche vide. À chaque navigation, le routeur **démonte** la page, et son état local disparaît avec elle.
 
-`KeepAlive` change cela : il **met en cache l'instance** d'un composant au lieu de la détruire quand elle sort de l'écran, et la remet telle quelle à son retour. L'état local (page, recherche, catégorie, position de défilement) survit, et le cache de TanStack Query n'y est pour rien : c'est la même instance de composant. Son option `include` désigne les composants à garder **par leur nom** : le nom d'un `<script setup>` est celui de son fichier, ici `ProductListPage`, sans rien à déclarer.
+`KeepAlive` change cela : il **met en cache l'instance** d'un composant au lieu de la détruire quand elle sort de l'écran, et la remet telle quelle à son retour. L'état local (page, recherche, catégorie) survit, et le cache de TanStack Query n'y est pour rien : c'est la même instance de composant. Le coût est de la mémoire : la page reste en vie, avec ses données. Comme les deux autres, ce choix d'expérience n'est pas un gain mesuré ici. La position de défilement de la fenêtre, elle, relève de `scrollBehavior` du routeur, pas de `KeepAlive`. L'option `include` de `KeepAlive` désigne les composants à garder **par leur nom** : le nom d'un `<script setup>` est celui de son fichier, ici `ProductListPage`, sans rien à déclarer.
 
 Deux conséquences. Une page gardée en vie n'est **ni démontée ni remontée** : ses crochets `onUnmounted` et ses `onScopeDispose` ne s'exécutent plus, et Vue fournit `onActivated` et `onDeactivated` pour réagir aux sorties et aux retours. Et le choix de ce qu'on garde compte : la page des enchères ne figure pas dans `include`, parce que sa connexion socket est fermée à son démontage (étape 05), et c'est voulu : on ne veut pas d'un socket ouvert derrière une page qu'on ne voit pas. `KeepAlive` accepte aussi `max`, pour borner le nombre d'instances conservées.
 
@@ -424,9 +433,9 @@ echo "Type-check, lint et tests passent : l'application est dans l'état de fin 
 
 ## Récap
 
-- **Mesurer d'abord** : un compteur de rendus (`useRenderCount`, `__renderCounts()`) donne des nombres reproductibles. Avec la modale ouverte, dix secondes de ticker coûtaient 2 207 rendus de composants, 203 après correction, soit environ onze fois moins. Aucun temps CPU n'a été relevé : pour cela, il faut le profileur du navigateur.
+- **Mesurer d'abord** : un compteur de rendus (`useRenderCount`, `__renderCounts()`) donne des nombres reproductibles. Sur la machine du lab, avec la modale ouverte, dix secondes de ticker coûtaient 2 207 rendus de composants, 203 après correction, soit environ onze fois moins. Aucun temps CPU n'a été relevé : pour cela, il faut le profileur du navigateur.
 - **Une hypothèse se teste** : `v-memo` n'a pas corrigé l'historique, parce que son cache est positionnel et parce qu'un composant enfant d'un `TransitionGroup` est refait à chaque rendu du parent. Le correctif a été de mettre des éléments à la place des composants.
-- `shallow: true` fait des données du cache un `shallowRef` quand on ne les modifie jamais, `defineAsyncComponent` coupe la modale en un fichier chargé à la demande, `KeepAlive` conserve l'état du catalogue d'une navigation à l'autre.
+- `shallow: true` fait des données du cache un `shallowRef` quand on ne les modifie jamais, `defineAsyncComponent` coupe la modale en un fichier chargé à la demande, `KeepAlive` conserve l'état du catalogue d'une navigation à l'autre. Ces trois-là sont des choix de principe, non chiffrés par un relevé de temps.
 - Le faux `TransitionGroup` de l'utilitaire de test masque un coût réel : un test de rendus demande le vrai.
 
 L'étape suivante est la dernière : vous écrivez les tests de l'application, avec des outils qui ont tous un rôle précis, et un script qui vérifie qu'ils valent quelque chose.

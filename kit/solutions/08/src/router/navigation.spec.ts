@@ -44,10 +44,9 @@ describe('navigation (router.push + flushPromises)', () => {
     expect(route.query.redirect).toBe('/account')
   })
 
-  it('/checkout sans session : bloqué, avec retour prévu vers /checkout', async () => {
+  it('/cart reste accessible sans session (route publique)', async () => {
     const { go } = setup(false)
-    const route = await go('/checkout')
-    expect(route.fullPath).toBe('/login?redirect=/checkout')
+    expect((await go('/cart')).name).toBe('cart')
   })
 
   it('avec une session, /account est accessible', async () => {

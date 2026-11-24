@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
+import { QueryClient } from '@tanstack/vue-query'
 import { delay, http, HttpResponse } from 'msw'
 import { API_URL } from '@/api/config'
 import { catalog } from '@/test/fixtures'
@@ -107,6 +108,36 @@ describe('useProducts', () => {
     await vi.waitFor(() => expect(result.isError.value).toBe(true))
     expect(result.products.value).toEqual([])
     unmount()
+  })
+
+  it('nouvelle tentative : refait la requête de SA clé, même si les paramètres ont changé entre-temps', async () => {
+    // La page 1 échoue une fois ; pendant l'attente avant la nouvelle tentative, le premier composant passe à la page 2,
+    // un second composant garde la page 1 affichée (la requête de la page 1 reste donc vivante).
+    let failures = 0
+    server.use(
+      http.get(`${API_URL}/products`, ({ request }) => {
+        const url = new URL(request.url)
+        if (url.searchParams.get('skip') === '0' && failures === 0) {
+          failures++
+          return HttpResponse.json({ message: 'boom' }, { status: 500 })
+        }
+        return HttpResponse.json(paginate(catalog, url))
+      }),
+    )
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, retryDelay: 80 } } })
+    const page = ref(1)
+    const keeper = withSetup(() => useProducts({ page: ref(1) }), { queryClient })
+    // Monté en second : c'est son queryFn que la requête de la page 1 réutilise pour sa nouvelle tentative.
+    const mover = withSetup(() => useProducts({ page }), { queryClient })
+    await vi.waitFor(() => expect(failures).toBe(1))
+    page.value = 2 // la clé du premier composant change AVANT la nouvelle tentative de la page 1
+
+    const keyPage1 = productKeys.list({ page: 1, pageSize: 12, search: '', category: null })
+    await vi.waitFor(() => expect(queryClient.getQueryData<{ products: { id: number }[] }>(keyPage1)).toBeDefined())
+    // Avec un queryFn qui relit la valeur COURANTE de la clé, la page 2 (id 13) serait rangée sous la clé de la page 1.
+    expect(queryClient.getQueryData<{ products: { id: number }[] }>(keyPage1)?.products[0]?.id).toBe(1)
+    mover.unmount()
+    keeper.unmount()
   })
 
   it('met en cache : une seconde lecture de la même page ne refait pas d’appel', async () => {

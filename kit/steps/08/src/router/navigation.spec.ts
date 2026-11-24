@@ -8,7 +8,7 @@ describe('navigation', () => {
   it.todo('« / » redirige vers /home')
   it.todo('une page publique est accessible sans session')
   it.todo('/account sans session : redirection vers /login avec l’adresse demandée (query.redirect)')
-  it.todo('/checkout sans session : bloqué, retour prévu vers /checkout')
+  it.todo('/cart reste accessible sans session (route publique)')
   it.todo('avec une session, /account est accessible')
   it.todo('avec une session, /login renvoie à l’accueil')
   it.todo('la garde relit la session à chaque navigation (déconnexion puis /account)')

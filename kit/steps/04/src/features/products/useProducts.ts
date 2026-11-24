@@ -29,8 +29,10 @@ export interface UseProductsResult {
  * TODO 1 — Le catalogue paginé avec `useQuery` (de @tanstack/vue-query).
  *  - `queryKey` : un `computed` qui lit les paramètres réactifs (`toValue`) et appelle
  *    `productKeys.list({ page, pageSize, search, category })` (voir queryKeys.ts) ;
- *  - `queryFn: ({ signal }) => fetchProducts({ limit, skip, q, category }, signal)`, avec
- *    `skip = (page - 1) * pageSize` (pageSize vaut 12 par défaut) ;
+ *  - `queryFn: ({ queryKey, signal }) => fetchProducts({ limit, skip, q, category }, signal)`, avec
+ *    `skip = (page - 1) * pageSize` (pageSize vaut 12 par défaut). Lisez page, search et category
+ *    dans la clé REÇUE (`queryKey[2]`), pas dans la valeur courante du `computed` : après un échec,
+ *    la nouvelle tentative doit refaire la requête de SA clé ;
  *  - `placeholderData: keepPreviousData` : pas de page blanche entre deux pages ;
  *  - `staleTime: 30_000` ;
  *  - renvoyez `products`, `total`, `pageCount` (= ceil(total / pageSize)) et `isEmpty`

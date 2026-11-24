@@ -29,6 +29,8 @@ function setup() {
   return { ...mounted, iphone }
 }
 
+/** Ramène l'apostrophe typographique (’) à l'apostrophe droite avant de comparer deux messages. */
+const plain = (text: string) => text.replace(/[\u2018\u2019]/g, "'")
 const refused = (reason: 'too-low' | 'outbid' | 'closed', price = 450, version = 0): BidAck => ({
   ok: false,
   reason,
@@ -109,6 +111,8 @@ describe('useBid : enchère optimiste', () => {
     fake.last('auction:bid').timeout?.()
     await vi.waitFor(() => expect(result.isError.value).toBe(true))
     expect(result.error.value).not.toBeInstanceOf(BidRefusedError)
+    // apostrophe droite ou typographique (’) : les deux sont acceptés
+    expect(plain(result.error.value?.message ?? '')).toBe('Le serveur n\'a pas répondu à temps.')
     expect(iphone()).toMatchObject({ price: 450, leader: null })
     unmount()
   })

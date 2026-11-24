@@ -27,9 +27,9 @@ describe('useBidRules', () => {
     unmount()
   })
 
-  it('arrondit à deux décimales (pas de 480.5 + 5 = 485.50000000000006)', () => {
-    const { result, unmount } = setup(makeAuction({ price: 450.07 }))
-    expect(result.minimum.value).toBe(455.07)
+  it('arrondit à deux décimales (507.07 + 5 donne 512.0699999999999 en flottant)', () => {
+    const { result, unmount } = setup(makeAuction({ price: 507.07 }))
+    expect(result.minimum.value).toBe(512.07)
     unmount()
   })
 

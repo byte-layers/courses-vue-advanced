@@ -13,8 +13,13 @@ const app = createApp(App)
 const pinia = createPinia()
 const notify = createNotify()
 // Le cache serveur : un QueryClient partagé, installé comme un plugin.
+// networkMode: 'always' : sans cela, hors ligne, TanStack Query met requêtes et mutations en pause
+// (ni erreur, ni retour en arrière de l'ajout optimiste) ; ici on veut l'échec, donc l'erreur et le toast.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: { retry: 1, refetchOnWindowFocus: false, networkMode: 'always' },
+    mutations: { networkMode: 'always' },
+  },
 })
 
 app.use(pinia).use(VueQueryPlugin, { queryClient }).use(vuetify).use(notify).use(router)

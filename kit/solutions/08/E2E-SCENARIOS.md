@@ -64,9 +64,20 @@ pas écrits en dur.
 4. Variante (stockage corrompu) : `page.addInitScript(() => localStorage.setItem('shop.cart', '{pas du json'))` avant `goto('/cart')`
    -> `cart-empty` visible, aucune erreur dans la console.
 
-## Scénario 3 : la commande est bloquée sans connexion
+## Scénario 3 : une page protégée est bloquée sans connexion
 
-**But** : la garde du routeur protège `/checkout`, et la connexion ramène à la commande.
+**But** : la garde du routeur protège les pages réservées, et la connexion ramène à la page demandée.
+**Deux variantes selon votre application** : si vous avez fait l'**option « commande » de l'étape 06**, le scénario vise `/checkout`
+(variante A) ; sinon il vise `/account`, qui existe depuis l'étape 03 (variante B). Le principe est le même.
+
+### Variante B (sans l'option) : `/account`
+
+1. Sans session, `page.goto('/account')`.
+   - Vérifier : l'URL est `/login?redirect=/account` ; `login-page` visible.
+2. Se connecter : `getByLabel('Identifiant')` et `getByLabel('Mot de passe')` (préremplis avec le compte `emilys`), puis `login-submit`.
+   - Vérifier : l'URL devient `/account` ; la page du compte affiche « Emily Johnson ».
+
+### Variante A (avec l'option) : `/checkout`
 
 1. Ajouter un produit, aller sur `/cart`, cliquer `getByRole('link', { name: 'Passer commande' })` (`cart-checkout`).
    - Vérifier : l'URL est `/login?redirect=/checkout` ; `login-page` visible.

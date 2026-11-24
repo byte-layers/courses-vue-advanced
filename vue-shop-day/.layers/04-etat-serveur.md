@@ -5,7 +5,9 @@ description: "Remplacer les appels fetch du catalogue par un cache serveur : pag
 
 Le catalogue charge ses produits avec `onMounted` et un `fetch` : pas de cache, pas de nouvelle tentative, et une course à gérer à la main quand l'utilisateur tape vite. Cette étape remplace ce code par **TanStack Query**, qui gère les données qui **appartiennent au serveur** : leur cache, leur fraîcheur, leurs états de chargement et d'erreur. Vous écrivez quatre fichiers (les schémas Zod, deux composables de lecture, une mutation optimiste), vous branchez le cache sur la page du catalogue, et vous regardez le résultat dans le navigateur. Un point à connaître d'avance : **DummyJSON ne persiste rien**, ce qui change la façon de penser l'ajout au panier (section 04.6).
 
-> 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 03, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 03` : le script copie le code attendu dans `~/byte-layers/vue/shop` et écrase vos fichiers du même nom, pensez à les committer avant.
+**Durée** : environ 70 minutes (quatre exercices d'écriture, trois installations, un branchement et cinq essais dans le navigateur).
+
+> 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 03, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 03` : le script copie le code attendu dans `~/byte-layers/vue/shop` et écrase vos fichiers du même nom, copiez d'abord votre dossier `src` ailleurs si vous voulez garder vos versions.
 
 ## 04.1 - Support : copier les fichiers fournis et installer les paquets
 
@@ -79,7 +81,7 @@ TanStack Query est le cache de l'état serveur. Il remplace les `ref` de donnée
 | `isPending` | aucune donnée n'est encore disponible : la toute première charge |
 | `isFetching` | un appel est en cours, même si une donnée est déjà affichée |
 | invalidation | marquer des données comme périmées ; celles qui sont affichées sont rechargées |
-| mutation | une écriture sur le serveur (`useMutation`), qui ne se met pas en cache |
+| mutation | une écriture sur le serveur (`useMutation`), dont le résultat n'est pas servi comme une lecture : on la déclenche, on ne la relit pas |
 
 La règle qui découle de tout cela : un composable de lecture déclare **ce dont il dépend** dans sa clé, et TanStack Query refait l'appel quand cette clé change. Vous n'écrivez plus de `watch(…, load)`.
 
@@ -188,6 +190,8 @@ export const productKeys = {
 
 Cette hiérarchie sert à l'invalidation : invalider `productKeys.all` touche tout le catalogue, `productKeys.lists()` seulement les listes. La page, elle, passe des **refs** à `useProducts` : la clé est un `computed` qui les lit avec `toValue`, et TanStack Query refait l'appel dès qu'elle change. L'API de DummyJSON pagine par `limit` et `skip` : `skip = (page - 1) * pageSize`.
 
+**Une règle de cache à connaître :** le `queryFn` doit lire ses paramètres dans la clé qu'il reçoit. S'il lisait la valeur courante des refs, une nouvelle tentative après un échec (`retry`) refaisait la requête de la page **affichée maintenant**, et rangeait sa réponse sous la clé de l'ancienne page : le cache serait empoisonné.
+
 Deux options du cache comptent ici. `placeholderData: keepPreviousData` garde la page précédente à l'écran pendant que la suivante charge, au lieu d'une page blanche. `staleTime: 30_000` considère une page comme fraîche pendant 30 secondes : y revenir ne refait aucun appel.
 
 Ouvrez `src/features/products/useProducts.ts`. Les types `ProductsParams` et `UseProductsResult` sont fournis, et les deux fonctions à écrire sont décrites par leurs commentaires `TODO`.
@@ -197,12 +201,14 @@ Ouvrez `src/features/products/useProducts.ts`. Les types `ProductsParams` et `Us
 **Critères :**
 
 - `useProducts(params)` appelle `fetchProducts({ limit, skip, q, category }, signal)` (de `@/api/products`) à travers `useQuery`, avec une `queryKey` calculée par `productKeys.list(…)` à partir des paramètres réactifs ; `pageSize` vaut 12 par défaut ;
+- le `queryFn` lit ses paramètres dans la **`queryKey` qu'il reçoit** (`({ queryKey, signal }) => … queryKey[2]`), pas dans la valeur courante des refs ;
+- `placeholderData: keepPreviousData` et `staleTime: 30_000` sont réglés : la section 04.8 s'appuie sur le second ;
 - il renvoie `products`, `total`, `pageCount` (`Math.ceil(total / pageSize)`), `isPending`, `isFetching`, `isError`, `error`, `refetch`, et `isEmpty`, vrai **seulement** quand la requête a réussi et que la liste est vide ;
 - changer de page appelle `skip = 12`, et l'ancienne page reste affichée pendant le chargement ;
 - `useCategories()` lit `fetchCategories` sous `productKeys.categories()`, avec `staleTime: Infinity`, et renvoie `{ categories }`, un tableau vide tant que la réponse n'est pas là.
 
 ```hint
-Importez `computed` et `toValue` de `vue`, `keepPreviousData` et `useQuery` de `@tanstack/vue-query`. `const key = computed(() => productKeys.list({ page: toValue(params.page), … }))` donne une clé réactive : passez-la à `useQuery({ queryKey: key, … })`. Les données se lisent avec `query.data.value`.
+Importez `computed` et `toValue` de `vue`, `keepPreviousData` et `useQuery` de `@tanstack/vue-query`. `const key = computed(() => productKeys.list({ page: toValue(params.page), … }))` donne une clé réactive : passez-la à `useQuery({ queryKey: key, … })`. Les données se lisent avec `query.data.value`. `MaybeRefOrGetter` et `toValue` sont ceux de l'étape 02 : `toValue` lit indifféremment un nombre, un ref ou un getter.
 ```
 
 ```hint
@@ -226,8 +232,10 @@ export function useProducts(params: ProductsParams): UseProductsResult {
 
   const query = useQuery({
     queryKey: key,
-    queryFn: ({ signal }) => {
-      const { page, search, category } = key.value[2]
+    // Les paramètres viennent de la clé REÇUE, pas de la valeur courante : après un échec, la nouvelle
+    // tentative refait la requête de SA clé, même si l'utilisateur est déjà passé à une autre page.
+    queryFn: ({ queryKey, signal }) => {
+      const { page, search, category } = queryKey[2]
       return fetchProducts(
         { limit: pageSize, skip: (page - 1) * pageSize, q: search, category },
         signal,
@@ -277,7 +285,7 @@ echo "Le catalogue est paginé, mis en cache, et ses états sont distincts."
 
 ## 04.5 - La fiche d'un produit et son prefetch au survol
 
-La fiche d'un produit est une requête **partagée** : la page de détail la lit, et la carte du catalogue peut la **précharger** au survol, pour qu'elle soit déjà dans le cache au clic. Les deux doivent employer exactement la même clé et la même fonction. `queryOptions` sert à cela : il décrit une requête une seule fois, avec ses types, et `useQuery`, `prefetchQuery` ou plus tard `setQueryData` le réutilisent sans rien dupliquer.
+La fiche d'un produit est une requête **partagée** : la page de détail la lit, et la carte du catalogue peut la **précharger** au survol, pour qu'elle soit déjà dans le cache au clic. Les deux doivent employer exactement la même clé et la même fonction. `queryOptions` sert à cela : il décrit une requête une seule fois, avec ses types, et `useQuery`, `prefetchQuery` ou, plus tard, `setQueryData(options.queryKey, …)` le réutilisent sans rien dupliquer.
 
 Ouvrez `src/features/products/useProduct.ts`. Trois fonctions sont à écrire.
 
@@ -332,7 +340,7 @@ echo "La fiche se charge, suit son identifiant, et se précharge sans doublon."
 
 ## 04.6 - L'ajout au panier optimiste, et ce que DummyJSON ne garde pas
 
-Une **mutation** est une écriture : elle ne se met pas en cache et passe par `useMutation`. Une mise à jour **optimiste** change l'interface **avant** la réponse du serveur, en pariant qu'elle réussira, et revient en arrière si elle échoue : le clic se sent instantané. `useMutation` offre les points d'accroche : `onMutate` s'exécute avant l'envoi, `onError` si le serveur refuse, `onSuccess` à la réussite, `onSettled` dans les deux cas.
+Une **mutation** est une écriture : elle passe par `useMutation`, et son résultat n'est pas relu comme celui d'une requête. Une mise à jour **optimiste** change l'interface **avant** la réponse du serveur, en pariant qu'elle réussira, et revient en arrière si elle échoue : le clic se sent instantané. `useMutation` offre les points d'accroche : `onMutate` s'exécute avant l'envoi, `onError` si le serveur refuse, `onSuccess` à la réussite, `onSettled` dans les deux cas.
 
 Il faut d'abord regarder ce que DummyJSON fait vraiment. `POST /carts/add` **simule** l'ajout : la réponse est un `201` avec un panier fictif, **rien n'est enregistré** (il faut même envoyer un `userId`, sinon la réponse est un `400`). Cela a trois conséquences pour le code :
 
@@ -350,7 +358,7 @@ Ouvrez `src/features/cart/useAddToCart.ts`. Le type `AddToCartInput` est fourni 
 
 - `mutationFn` appelle `postCartAdd(product.id, quantity)` (de `@/api/products`) ;
 - `onMutate` ajoute tout de suite au store (`cart.add(product, quantity)`), avant la réponse ;
-- `onError` annule **seulement cet ajout**, avec `cart.setQuantity(id, quantité actuelle - quantity)` : une ligne qui n'existait pas disparaît, une ligne existante retrouve sa quantité d'avant ;
+- `onError` annule **seulement cet ajout**, avec `cart.setQuantity(id, quantité actuelle - quantity)` : une ligne ajoutée par cette mutation disparaît (`setQuantity` supprime la ligne quand la quantité tombe à 0 ou moins), une ligne existante retrouve sa quantité d'avant ;
 - deux ajouts en vol dont un seul échoue laissent l'autre dans le panier.
 
 ```hint
@@ -403,43 +411,23 @@ echo "L'ajout est optimiste, et son rollback n'annule que l'ajout en échec."
 
 ## 04.7 - Installer le cache et lire la page du catalogue
 
-Les composables sont écrits ; il reste à installer le cache dans l'application. TanStack Query a besoin d'un **`QueryClient`**, qui contient le cache, installé comme un plugin. Sans lui, un composable lève l'erreur `No 'queryClient' found in Vue context`. Remplacez le contenu de `src/main.ts` par ceci : on ajoute l'import, le client avec ses options par défaut, et `.use(VueQueryPlugin, { queryClient })`.
+Les composables sont écrits ; il reste à installer le cache dans l'application. TanStack Query a besoin d'un **`QueryClient`**, qui contient le cache, installé comme un plugin. Sans lui, un composable lève l'erreur `No 'queryClient' found in Vue context`. Dans `src/main.ts`, **ajoutez** l'import, le client avec ses options par défaut, et `VueQueryPlugin` dans la chaîne des `use` (juste après `pinia`) ; le reste du fichier ne change pas.
 
 ```ts
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
-import App from './App.vue'
-import router from './router'
-import vuetify from './plugins/vuetify'
-import { createNotify } from './plugins/notify'
-import { vCountdown } from './directives/countdown'
-import { useAuthStore } from './features/auth/authStore'
 
-const app = createApp(App)
-const pinia = createPinia()
-const notify = createNotify()
 // Le cache serveur : un QueryClient partagé, installé comme un plugin.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: { retry: 1, refetchOnWindowFocus: false, networkMode: 'always' },
+    mutations: { networkMode: 'always' },
+  },
 })
 
 app.use(pinia).use(VueQueryPlugin, { queryClient }).use(vuetify).use(notify).use(router)
-app.directive('countdown', vCountdown)
-
-// Session perdue (renouvellement impossible) : on prévient et on renvoie vers la connexion.
-useAuthStore(pinia).onSessionExpired(() => {
-  notify.api.notify('Session expirée, reconnectez-vous.', 'error')
-  void router.push({
-    name: 'login',
-    query: { redirect: router.currentRoute.value.fullPath },
-  })
-})
-
-app.mount('#app')
 ```
 
-Les options par défaut disent : une seule nouvelle tentative après un échec (`retry: 1`) et pas de rechargement automatique au retour sur l'onglet (`refetchOnWindowFocus: false`), pour que le réseau reste lisible pendant vos essais. Le `queryClient` est gardé dans une constante : l'étape 05 écrira directement dans son cache.
+Les options par défaut disent : une seule nouvelle tentative après un échec (`retry: 1`), pas de rechargement automatique au retour sur l'onglet (`refetchOnWindowFocus: false`), pour que le réseau reste lisible pendant vos essais, et `networkMode: 'always'` pour les requêtes **et** les mutations. Sans ce dernier réglage, une requête lancée sans réseau est mise **en pause** au lieu d'échouer : ni erreur, ni retour en arrière de l'ajout optimiste, et la section 04.8 ne montrerait rien. Le `queryClient` est gardé dans une constante pour être passé au plugin.
 
 Ouvrez maintenant `src/features/products/pages/ProductListPage.vue`, fournie, et repérez comment elle consomme vos composables. Le code de l'étape 02 pour la recherche y est repris : `draft` suit la frappe à l'instant, pour que le champ reste fluide, et `search`, le `customRef` avec debounce, n'est posé qu'après 300 ms de silence. Seul `search` entre dans la clé de la requête.
 
@@ -473,10 +461,11 @@ Deux remarques sur DummyJSON : sa recherche ne se combine pas avec la catégorie
 
 ```verify
 D=~/byte-layers/vue/shop
-grep -q 'VueQueryPlugin' "$D/src/main.ts" || { echo "main.ts n'installe pas TanStack Query : reprenez le code de la section 04.7."; exit 1; }
+grep -q 'use(VueQueryPlugin' "$D/src/main.ts" || { echo "main.ts n'installe pas TanStack Query : reprenez le code de la section 04.7."; exit 1; }
 grep -q 'new QueryClient' "$D/src/main.ts" || { echo "main.ts ne crée pas de QueryClient : reprenez le code de la section 04.7."; exit 1; }
+grep -q "networkMode: 'always'" "$D/src/main.ts" || { echo "main.ts ne règle pas networkMode: 'always' : sans lui, les essais hors réseau de la section 04.8 ne produisent ni erreur ni rollback."; exit 1; }
 (cd "$D" && npm run -s type-check >/dev/null 2>&1) || { echo "Le type-check échoue : lancez « npm run type-check » dans ~/byte-layers/vue/shop et lisez la première erreur."; exit 1; }
-echo "Le cache est installé, et l'application compile."
+echo "Le cache est branché sur l'application, et elle compile."
 ```
 
 ## 04.8 - Le catalogue dans le navigateur
@@ -489,15 +478,17 @@ label: "Application (laisser tourner)"
 cd ~/byte-layers/vue/shop && npm run dev
 ```
 
-Ouvrez `http://localhost:5173/products` (rechargez si le premier chargement affiche `Failed to fetch dynamically imported module`) et ouvrez l'onglet Network des outils de développement. Faites ces essais, dans l'ordre :
+Ouvrez la page `/products` à l'adresse que Vite affiche (`http://localhost:5173` en général) (rechargez si le premier chargement affiche `Failed to fetch dynamically imported module`) et ouvrez l'onglet Network des outils de développement. Faites ces essais, dans l'ordre :
 
-1. **Pagination.** Cliquez sur « Aller à la page 2 ». La requête part avec `skip=12`, et la page 1 reste à l'écran, légèrement atténuée, jusqu'à l'arrivée de la page 2 (un instant, si votre réseau est rapide). Revenez à la page 1 : **aucune requête** ne part, parce que la page est encore fraîche (`staleTime` de 30 secondes).
+1. **Pagination.** Cliquez sur « Aller à la page 2 ». La requête part avec `skip=12`, et la page 1 reste à l'écran, légèrement atténuée, jusqu'à l'arrivée de la page 2 (un instant, si votre réseau est rapide). Revenez à la page 1 dans les 30 secondes : **aucune requête** ne part, parce que la page est encore fraîche (`staleTime`). Au-delà, la requête repart en arrière-plan, et la page affichée est remplacée sans clignoter.
 2. **Recherche.** Tapez `phone` à vitesse normale : une **seule** requête `search?q=phone` part, 300 ms après la dernière frappe. Tapez `zzzzzz` : le message « Aucun produit ne correspond à votre recherche » remplace la liste, la pagination disparaît, et la page est revenue à 1.
 3. **Prefetch.** Effacez la recherche, puis passez la souris sur une carte : une requête `GET /products/<id>` part. Cliquez sur la carte : la fiche s'affiche tout de suite, sans indicateur de chargement.
-4. **Ajout optimiste.** Dans Network, choisissez le débit « 3G lente », puis cliquez sur « Ajouter au panier » : le badge du panier monte **immédiatement**, avant que `POST /carts/add` ait répondu. Passez ensuite le réseau en « Hors ligne » et cliquez de nouveau : le badge monte, puis **redescend** et un message « Ajout de … impossible, panier inchangé » apparaît : c'est le rollback.
-5. **Erreur.** Toujours hors ligne, cliquez sur « Aller à la page 3 » : après une nouvelle tentative, la liste est remplacée par une alerte d'erreur avec « Réessayer ». Remettez le réseau en ligne et cliquez sur « Réessayer » : la liste revient.
+4. **Ajout optimiste.** Dans Network, choisissez le débit « 3G lente », puis cliquez sur « Ajouter au panier » : le badge du panier monte **immédiatement**, avant que `POST /carts/add` ait répondu. Pour provoquer l'échec, bloquez cette requête : dans les outils de développement de Chromium, ouvrez le panneau « Network request blocking » (menu des trois points, More tools), ajoutez le motif `*carts/add*` et activez le blocage ; dans Firefox, clic droit sur une requête puis « Bloquer l'URL ». Cliquez de nouveau sur « Ajouter au panier » : le badge monte, puis **redescend**, et un message « Ajout de … impossible, panier inchangé » apparaît : c'est le rollback.
+5. **Erreur.** Supprimez le motif précédent, ajoutez `*skip=24*` et cliquez sur « Aller à la page 3 » : après une nouvelle tentative, la liste est remplacée par une alerte d'erreur avec « Réessayer ». Retirez le motif et cliquez sur « Réessayer » : la liste revient.
 
-Remettez le débit sur « Sans limitation » à la fin. Si DummyJSON n'est pas joignable depuis votre poste, reprenez le repli hors ligne de l'étape 01 : la démarche est la même.
+On bloque des URL plutôt que de passer en mode « Hors ligne » : avec le repli local de la section 01.5, ce mode coupe aussi `localhost` et rend tout inutilisable. Avec DummyJSON, le mode « Hors ligne » donne le même résultat que le blocage, grâce au réglage `networkMode: 'always'` de la section 04.7.
+
+Remettez le débit sur « Sans limitation » et désactivez le blocage à la fin. Si DummyJSON n'est pas joignable depuis votre poste, utilisez le repli hors ligne de la section 01.5 : la démarche est la même.
 
 ```acknowledge
 J'ai vu la pagination, la recherche, le prefetch, l'ajout optimiste avec son rollback et l'état d'erreur

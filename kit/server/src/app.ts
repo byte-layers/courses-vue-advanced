@@ -29,11 +29,35 @@ export async function startServer(overrides: Partial<Config> = {}) {
     cors: { origin: cfg.corsOrigins },
   })
 
+  // --- Gel (« stall ») : POST /control/stall. Pendant le gel le serveur ne traite plus les événements
+  // entrants des sockets et ne diffuse plus rien : tout est mis en file, puis rejoué dans l'ordre à la fin.
+  // La boucle d'événements n'est PAS bloquée : les ping/pong de socket.io (couche engine) continuent.
+  let stalledUntil = 0
+  let stallTimer: NodeJS.Timeout | undefined
+  const queue: Array<() => void> = []
+  const isStalled = () => Date.now() < stalledUntil
+  /** Exécute `fn` tout de suite, ou à la fin du gel s'il y en a un (ordre d'arrivée conservé). */
+  const defer = (fn: () => void) => {
+    if (stallTimer) queue.push(fn)
+    else fn()
+  }
+  function endStall() {
+    stallTimer = undefined
+    stalledUntil = 0
+    while (queue.length > 0 && !stallTimer) queue.shift()!() // si un handler relance un gel, on s'arrête
+  }
+  function stall(ms: number) {
+    if (stallTimer) clearTimeout(stallTimer)
+    stalledUntil = Date.now() + ms
+    stallTimer = setTimeout(endStall, ms)
+    return stalledUntil
+  }
+
   // Le moteur appelle ces écouteurs ; on diffuse à la room de l'enchère.
   const room = (productId: number) => `auction:${productId}`
   const engine = new AuctionEngine(products, { durationSeconds: cfg.auctionDurationSeconds, step: cfg.bidStep }, {
-    onBid: (bid) => io.to(room(bid.productId)).emit('auction:bid', bid),
-    onClosed: (state) => io.to(room(state.productId)).emit('auction:closed', state),
+    onBid: (bid) => defer(() => io.to(room(bid.productId)).emit('auction:bid', bid)),
+    onClosed: (state) => defer(() => io.to(room(state.productId)).emit('auction:closed', state)),
   })
   const bots = new Bots(engine, cfg)
 
@@ -42,33 +66,39 @@ export async function startServer(overrides: Partial<Config> = {}) {
     socket.emit('server:time', Date.now())
     socket.emit('auction:list', engine.list())
 
-    socket.on('auction:join', (productId, ack) => {
-      const state = engine.auctions.get(productId) ?? null
-      if (state) {
-        socket.join(room(productId))
-        socket.emit('auction:state', { ...state })
-      }
-      if (typeof ack === 'function') ack(state ? { ...state } : null)
-    })
-    socket.on('auction:leave', (productId) => {
-      socket.leave(room(productId))
-    })
-    socket.on('auction:bid', (payload, ack) => {
-      const result = engine.bid(payload)
-      if (typeof ack === 'function') ack(result)
-    })
+    socket.on('auction:join', (productId, ack) =>
+      defer(() => {
+        const state = engine.auctions.get(productId) ?? null
+        if (state) {
+          socket.join(room(productId))
+          socket.emit('auction:state', { ...state })
+        }
+        if (typeof ack === 'function') ack(state ? { ...state } : null)
+      }),
+    )
+    socket.on('auction:leave', (productId) => defer(() => void socket.leave(room(productId))))
+    socket.on('auction:bid', (payload, ack) =>
+      defer(() => {
+        const result = engine.bid(payload)
+        if (typeof ack === 'function') ack(result)
+      }),
+    )
   })
 
   // L'horloge du serveur, toutes les 5 s à tous les clients connectés.
-  const clock = setInterval(() => io.emit('server:time', Date.now()), cfg.timeIntervalMs).unref()
+  const clock = setInterval(() => {
+    if (!isStalled()) io.emit('server:time', Date.now())
+  }, cfg.timeIntervalMs).unref()
 
   /** Remet les enchères à zéro et prévient tout le monde. */
   function reset(durationSeconds?: number) {
     engine.reset(durationSeconds)
     bots.stop()
     bots.restart()
-    io.emit('auction:list', engine.list())
-    for (const a of engine.list()) io.to(room(a.productId)).emit('auction:state', { ...a })
+    defer(() => {
+      io.emit('auction:list', engine.list())
+      for (const a of engine.list()) io.to(room(a.productId)).emit('auction:state', { ...a })
+    })
   }
 
   async function handle(req: IncomingMessage, res: ServerResponse) {
@@ -116,6 +146,11 @@ export async function startServer(overrides: Partial<Config> = {}) {
       reset(typeof body.durationSeconds === 'number' ? body.durationSeconds : undefined)
       return send(res, { status: 200, body: { ok: true, auctions: engine.list() } })
     }
+    if (path === '/control/stall' && method === 'POST') {
+      const asked = Number(body.ms)
+      const ms = Number.isFinite(asked) && asked > 0 ? Math.min(asked, 30_000) : 8000
+      return send(res, { status: 200, body: { stalledUntil: stall(ms) } })
+    }
     if (path === '/control/drop-connection' && method === 'POST') {
       const n = io.engine.clientsCount
       if (body.hard) {
@@ -141,6 +176,8 @@ export async function startServer(overrides: Partial<Config> = {}) {
     io,
     async close() {
       clearInterval(clock)
+      if (stallTimer) clearTimeout(stallTimer)
+      queue.length = 0
       bots.stop()
       engine.reset() // annule les timers de fermeture
       await io.close()

@@ -42,8 +42,10 @@ export function useProducts(params: ProductsParams): UseProductsResult {
 
   const query = useQuery({
     queryKey: key,
-    queryFn: ({ signal }) => {
-      const { page, search, category } = key.value[2]
+    // Les paramètres viennent de la clé REÇUE, pas de la valeur courante : après un échec, la nouvelle
+    // tentative refait la requête de SA clé, même si l'utilisateur est déjà passé à une autre page.
+    queryFn: ({ queryKey, signal }) => {
+      const { page, search, category } = queryKey[2]
       return fetchProducts(
         { limit: pageSize, skip: (page - 1) * pageSize, q: search, category },
         signal,

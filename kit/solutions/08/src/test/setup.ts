@@ -1,4 +1,4 @@
-import { beforeEach } from 'vitest'
+import { afterEach, beforeEach } from 'vitest'
 
 // Réglages communs à tous les tests Vitest.
 // jsdom n'implémente pas tout ce que Vuetify attend ; des faux minimalistes suffisent.
@@ -26,11 +26,15 @@ if (!('visualViewport' in globalThis)) {
   })
 }
 
-// La cible des modales téléportées (voir App.vue) : recréée avant chaque test, car certains tests vident le document.
-beforeEach(() => {
+// La cible des modales téléportées (voir App.vue). Plusieurs tests vident le document (`document.body.innerHTML = ''`),
+// ce qui supprime aussi #modals : on la recrée AVANT chaque test et APRÈS chaque nettoyage (cet afterEach, déclaré
+// ici en premier, s'exécute en dernier), pour que le test suivant la trouve même si son propre beforeEach vide le document.
+function ensureModalsTarget() {
   if (!document.getElementById('modals')) {
     const target = document.createElement('div')
     target.id = 'modals'
     document.body.appendChild(target)
   }
-})
+}
+beforeEach(ensureModalsTarget)
+afterEach(ensureModalsTarget)

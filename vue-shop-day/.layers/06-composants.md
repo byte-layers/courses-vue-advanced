@@ -3,19 +3,21 @@ title: "06 - Composants avancés"
 description: "Écrire les composants que la boutique et les enchères réclament : une grille générique aux slots typés, un champ en v-model avec defineModel, un historique animé, une frontière d'erreur et une modale téléportée, avec en option un checkout VeeValidate et Zod."
 ---
 
-Les enchères fonctionnent, mais l'interface qui les porte est faite de bouts de gabarit. Cette étape écrit les **composants** qui manquent, chacun avec l'outil de Vue qui lui correspond : une grille **générique** dont les slots sont typés (`generic`, `defineSlots`), un champ d'offre en `v-model` (`defineModel`), un historique animé (`TransitionGroup`), une frontière d'erreur (`onErrorCaptured`), puis une modale **téléportée** (`Teleport`) qui rassemble les précédents. L'étape se termine par une **option de 30 minutes**, clairement marquée, que vous pouvez sauter sans rien casser : un formulaire de commande validé avec VeeValidate et Zod.
+**Durée** : environ 80 minutes pour le cœur de l'étape, et environ 40 minutes de plus pour l'option du checkout (sections 06.11 à 06.14).
+
+Les enchères fonctionnent, mais l'interface qui les porte est faite de bouts de gabarit. Cette étape écrit les **composants** qui manquent, chacun avec l'outil de Vue qui lui correspond : une grille **générique** dont les slots sont typés (`generic`, `defineSlots`), un champ d'offre en `v-model` (`defineModel`), un historique animé (`TransitionGroup`), une frontière d'erreur (`onErrorCaptured`), puis une modale **téléportée** (`Teleport`) qui rassemble les précédents. L'étape se termine par une **option d'environ 40 minutes**, clairement marquée, que vous pouvez sauter sans rien casser : un formulaire de commande validé avec VeeValidate et Zod.
 
 > 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 05, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 05` : le script copie le code attendu dans `~/byte-layers/vue/shop` et écrase vos fichiers du même nom, pensez à les committer avant.
 
 ## 06.1 - Support : copier les fichiers fournis
 
-Cette section est un **support** : un seul geste, une commande. Copiez les fichiers de l'étape dans l'application, depuis la racine de `shop` parce que l'étape fournit aussi des fichiers de configuration. Aucun paquet n'est à installer pour le cœur de l'étape.
+Cette section est un **support** : un seul geste, une commande. Copiez les fichiers de l'étape dans l'application, depuis la racine de `shop` parce que l'étape fournit aussi des fichiers de configuration. La copie **écrase** quatre fichiers existants (`vite.config.ts`, `tsconfig.app.json`, `src/test/setup.ts` et `AuctionModal.vue`) : le dépôt `shop` est versionné depuis l'étape 01, committez d'abord ce que vous avez modifié. Aucun paquet n'est à installer pour le cœur de l'étape.
 
 ```exec
 cp -R ~/byte-layers/vue/course/kit/steps/06/. ~/byte-layers/vue/shop/
 ```
 
-Voici ce que vous venez de recevoir. Les cinq squelettes sont à écrire (ils jettent `À écrire`, ou, pour la modale, portent un `TODO` en tête) ; trois fichiers existants vous seront à modifier à la main, aux sections 06.3, 06.7 et 06.8, car aucun squelette ne peut les remplacer.
+Voici ce que vous venez de recevoir. Les six squelettes sont à écrire (ils jettent `À écrire`, ou, pour la modale, portent un `TODO` en tête). Trois autres fichiers existants, que le kit ne remplace pas, sont à **modifier à la main** : `ProductListPage.vue` (section 06.3), puis `main.ts` et `App.vue` (section 06.7, `App.vue` encore en 06.8). La section 06.8 réécrit les versions de l'étape 05 de `AuctionModal.vue`, qui était fournie à l'étape 05 : l'étape 06 en fait des versions construites par vous.
 
 | Fichier (sous `src/`) | Nature |
 |---|---|
@@ -28,7 +30,7 @@ Voici ce que vous venez de recevoir. Les cinq squelettes sont à écrire (ils je
 | `*.spec.ts`, `ProductGrid.test-d.ts`, `App.spec.ts` | les tests qui valident votre travail |
 | `test/setup.ts`, `vite.config.ts`, `tsconfig.app.json`, `tsconfig.typetest.json` | **remplacés** : la cible `#modals` des tests, et la configuration des tests de types (section 06.2) |
 
-Tant que les squelettes ne sont pas écrits, les pages qui les emploient affichent une erreur `À écrire` : n'ouvrez pas l'application avant la section 06.9. Vite redémarre seul quand `vite.config.ts` change ; si vous n'avez plus `npm run dev` ni le serveur d'enchères, la section 06.9 les relance.
+Tant que les squelettes ne sont pas écrits, les pages qui les emploient affichent une erreur `À écrire` : n'ouvrez pas l'application avant la section 06.9 : si `npm run dev` tourne, le navigateur afficherait `À écrire`. Vite redémarre seul quand `vite.config.ts` change ; si vous n'avez plus `npm run dev` ni le serveur d'enchères, la section 06.9 les relance.
 
 ```verify
 D=~/byte-layers/vue/shop
@@ -48,7 +50,7 @@ defineProps<{ items: readonly T[] }>()
 </script>
 ```
 
-`T` n'est pas écrit par le parent : TypeScript le **déduit** de la prop `items`. Si le parent passe un `Product[]`, `T` vaut `Product` ; si c'est un tableau d'objets sans `id`, la compilation échoue. Le deuxième besoin est de laisser le parent dessiner chaque cellule. C'est le rôle d'un **slot à portée** (scoped slot) : le composant enfant appelle `<slot name="item" :item="item">` et le parent reçoit `item` dans son propre gabarit avec `<template #item="{ item }">`. `defineSlots` donne un type à ces slots, avec le même `T` :
+`T` n'est pas écrit par le parent : TypeScript le **déduit** de la prop `items`. Si le parent passe un `Product[]`, `T` vaut `Product` ; si c'est un tableau d'objets sans `id`, le type-check échoue. Le deuxième besoin est de laisser le parent dessiner chaque cellule. C'est le rôle d'un **slot à portée** (scoped slot) : le composant enfant appelle `<slot name="item" :item="item">` et le parent reçoit `item` dans son propre gabarit avec `<template #item="{ item }">`. `defineSlots` donne un type à ces slots, avec le même `T` :
 
 ```ts
 defineSlots<{
@@ -58,7 +60,7 @@ defineSlots<{
 }>()
 ```
 
-Grâce à lui, dans `#item="{ item }"`, `item` est un `Product` : l'éditeur complète `item.title`, et une faute de frappe devient une erreur de compilation, pas un `undefined` à l'exécution. Un slot facultatif se déclare avec `?` (ici `empty` et `header`).
+Grâce à lui, dans `#item="{ item }"`, `item` est un `Product` : l'éditeur complète `item.title`, et une faute de frappe devient une erreur de `npm run type-check` (Vite, lui, ne vérifie pas les types), pas un `undefined` à l'exécution. `defineSlots` rend ces types explicites et permet de déclarer des slots facultatifs. Un slot facultatif se déclare avec `?` (ici `empty` et `header`).
 
 Un mot sur le test fourni `ProductGrid.test-d.ts`. Il ne s'**exécute** pas : il vérifie des **types**. Vitest le fait compiler par `vue-tsc` (c'est le bloc `test.typecheck` de `vite.config.ts` que vous venez de recevoir), et il échoue si un type est faux, par exemple si `item` n'est pas un `T` ou si un `T` sans `id` numérique est accepté.
 
@@ -120,11 +122,12 @@ D=~/byte-layers/vue/shop
 F="$D/src/components/ProductGrid.vue"
 grep -q 'À écrire' "$F" && { echo "ProductGrid.vue contient encore « À écrire » : remplacez le squelette par la grille générique."; exit 1; }
 grep -q 'generic=' "$F" || { echo "ProductGrid.vue n'est pas générique : déclarez generic=\"T extends { id: number }\" dans la balise <script setup>."; exit 1; }
-(cd "$D" && npx vitest run src/components/ProductGrid.spec.ts src/components/ProductGrid.test-d.ts >/dev/null 2>&1) || { echo "Les tests de la grille échouent : lancez « npx vitest run src/components/ProductGrid.spec.ts src/components/ProductGrid.test-d.ts » dans ~/byte-layers/vue/shop et lisez le premier message. Le fichier .spec.ts teste le rendu, le fichier .test-d.ts les types : item doit être un T, et les cellules sont clées par id."; exit 1; }
+(cd "$D" && npx vitest run src/components/ProductGrid.spec.ts >/dev/null 2>&1) || { echo "Les tests de rendu de la grille échouent : lancez « npx vitest run src/components/ProductGrid.spec.ts » dans ~/byte-layers/vue/shop et lisez le premier message. Les cellules sont clées par id, et les slots item, empty et header sont rendus."; exit 1; }
+(cd "$D" && npx vitest run src/components/ProductGrid.test-d.ts >/dev/null 2>&1) || { echo "Les tests de types de la grille échouent : lancez « npx vitest run src/components/ProductGrid.test-d.ts » dans ~/byte-layers/vue/shop. item doit être un T déduit de items, et un T sans id numérique doit être refusé : vérifiez generic=\"T extends { id: number }\" et defineSlots."; exit 1; }
 echo "La grille est générique, ses slots sont typés et ses cellules sont clées par id."
 ```
 
-> 📖 [Vue : composants génériques (`generic`)](https://vuejs.org/api/sfc-script-setup.html) · [Vue : slots à portée et `defineSlots`](https://vuejs.org/guide/components/slots.html) · [Vue et TypeScript : typer les composants](https://vuejs.org/guide/typescript/composition-api.html)
+> 📖 [Vue : composants génériques (`generic`)](https://vuejs.org/api/sfc-script-setup.html#generics) · [Vue : slots à portée et `defineSlots`](https://vuejs.org/guide/components/slots.html) · [`defineSlots`](https://vuejs.org/api/sfc-script-setup.html#defineslots) · [Vue et TypeScript : typer les composants](https://vuejs.org/guide/typescript/composition-api.html)
 
 ## 06.3 - Brancher la grille sur le catalogue
 
@@ -141,6 +144,8 @@ Seconde modification, dans le gabarit : le `v-row` qui contient la boucle sur `p
 | Avant | Après |
 |---|---|
 | le bloc `<v-row data-testid="product-list" :class="{ 'opacity-60': isFetching }">` jusqu'à son `</v-row>`, avec sa `v-col` et sa boucle `v-for="product in products"` | le bloc ci-dessous |
+
+Voici le bloc qui remplace le `v-row` :
 
 ```vue
 <ProductGrid :items="products" :class="{ 'opacity-60': isFetching }" data-testid="product-list">
@@ -197,8 +202,8 @@ Ouvrez `src/features/auctions/components/BidAmountInput.vue`.
 
 **Critères :**
 
-- `const model = defineModel<number>({ required: true })`, et des props `min` (0), `step` (5) et `label` (« Votre offre (€) ») avec `withDefaults` : supprimez la prop `modelValue` du squelette, `defineModel` la déclare ;
-- le bouton « − » (`aria-label` « Diminuer l’offre », `data-testid="bid-amount-decrease"`) et le bouton « + » (« Augmenter l’offre », `bid-amount-increase`) changent le modèle de `±step`, arrondi à 2 décimales et jamais en dessous de `min` ; « − » est **désactivé** quand `model - step < min` ;
+- `const model = defineModel<number>({ required: true })`, et des props `min` (0), `step` (5) et `label` (« Votre offre (€) ») avec `withDefaults` : remplacez **tout** le script du squelette, en particulier sa prop `modelValue`, que `defineModel` déclare à sa place ;
+- le bouton « − » (`aria-label` « Diminuer l’offre », `data-testid="bid-amount-decrease"`) et le bouton « + » (« Augmenter l’offre », `bid-amount-increase`) changent le modèle de `±step`, arrondi à 2 décimales, sans jamais descendre sous `min` (les boutons seulement : une saisie au clavier n'est pas bornée) ; « − » est **désactivé** quand `model - step < min` ;
 - un `v-text-field type="number"` (`data-testid="bid-amount-field"`) affiche le modèle ; la saisie n'écrit dans le modèle que si c'est un nombre fini ;
 - la racine porte `data-testid="bid-amount"`. Un `data-testid` donné par le parent **remplace** celui de la racine : c'est ainsi que la fenêtre posera `auction-modal-amount`.
 
@@ -307,6 +312,8 @@ Ouvrez `src/features/auctions/components/BidHistory.vue`. La ligne `BidRow` est 
 - sinon `<TransitionGroup tag="ul" name="bid" data-testid="bid-history">` qui contient `<BidRow v-for="(bid, index) in bids" :key="bid.version" :bid="bid" :index="index" />` ;
 - un bloc `<style scoped>` avec les classes `bid-enter-from`, `bid-enter-active`, `bid-leave-active`, `bid-leave-to` et `bid-move` (fondu et glissement, 0,3 s), et `position: absolute` sur `bid-leave-active`.
 
+Deux remarques d'accessibilité : `transition: all` anime toutes les propriétés, ce qui est commode ici mais large ; et un produit réel désactiverait ces animations pour les personnes qui ont demandé moins de mouvement (media query `prefers-reduced-motion`). Le lab ne le fait pas.
+
 ```hint
 `TransitionGroup` est enregistré globalement par Vue : pas d'import à faire. Pour la transition : `transition: all 0.3s ease` sur les classes `-enter-active`, `-leave-active` et `-move`, `opacity: 0` et `transform: translateY(-12px)` sur `bid-enter-from`.
 ```
@@ -374,9 +381,9 @@ echo "L'historique est animé, ses lignes sont clées par version."
 
 Aujourd'hui, une erreur dans le rendu d'une page peut la rendre blanche, ou se perdre dans la console. On veut qu'une page qui plante soit **remplacée par un message**, avec un bouton pour réessayer, tandis que l'en-tête et le reste de l'application continuent de fonctionner. C'est le rôle d'une **frontière d'erreur**, que Vue permet d'écrire avec le hook `onErrorCaptured`.
 
-Quand un composant lève une erreur, Vue la fait **remonter** de parent en parent. Chaque ancêtre qui a un hook `onErrorCaptured` la reçoit, avec le composant fautif et une chaîne `info` qui dit où elle est née (rendu, `setup`, gestionnaire d'événement…). Si un hook renvoie **`false`**, la remontée s'arrête : l'erreur est considérée comme traitée. Si personne ne l'arrête, elle arrive au gestionnaire global de l'application, `app.config.errorHandler`, que la section suivante écrit. Le hook ne voit que ce que Vue appelle lui-même (rendu, `setup`, hooks, observateurs, gestionnaires d'événements du gabarit) : une promesse oubliée ou un `setTimeout` lui échappent.
+Quand un composant lève une erreur, Vue la fait **remonter** de parent en parent. Chaque ancêtre qui a un hook `onErrorCaptured` la reçoit, avec le composant fautif et une chaîne `info` qui dit où elle est née (rendu, `setup`, gestionnaire d'événement…). Si un hook renvoie **`false`**, la remontée s'arrête : l'erreur est considérée comme traitée. Si personne ne l'arrête, elle arrive au gestionnaire global de l'application, `app.config.errorHandler`, que la section suivante écrit. Le hook ne voit que ce que Vue appelle lui-même (rendu, `setup`, hooks, observateurs, gestionnaires d'événements du gabarit) : les gestionnaires d'événements du gabarit, même asynchrones, sont couverts, mais une promesse lancée sans être attendue ou un `setTimeout` ne le sont pas.
 
-Le composant `ErrorBoundary` garde donc l'erreur dans une `ref`, affiche son slot par défaut quand il n'y en a pas et un message de repli sinon. Il émet un événement `error` pour qui voudrait journaliser, et se **réarme** (`reset`) à la demande ou quand la prop `resetKey` change : l'application lui passera l'adresse de la page, pour qu'aller ailleurs efface l'erreur.
+Retenez une conséquence : en renvoyant `false`, la frontière **avale** l'erreur, qui n'atteint jamais le gestionnaire global ; la section suivante revient sur ce choix. Le composant `ErrorBoundary` garde donc l'erreur dans une `ref`, affiche son slot par défaut quand il n'y en a pas et un message de repli sinon. Il émet un événement `error` pour qui voudrait journaliser, et se **réarme** (`reset`) à la demande ou quand la prop `resetKey` change : l'application lui passera l'adresse de la page, pour qu'aller ailleurs efface l'erreur.
 
 Ouvrez `src/components/common/ErrorBoundary.vue`.
 
@@ -442,15 +449,17 @@ grep -q 'onErrorCaptured' "$F" || { echo "ErrorBoundary.vue n'utilise pas onErro
 echo "La frontière capte les erreurs de ses descendants et se réarme."
 ```
 
-> 📖 [Vue : `onErrorCaptured`](https://vuejs.org/api/composition-api-lifecycle.html) · [Vue : gestion des erreurs](https://vuejs.org/api/application.html)
+> 📖 [Vue : `onErrorCaptured`](https://vuejs.org/api/composition-api-lifecycle.html#onerrorcaptured) · [Vue : `app.config.errorHandler`](https://vuejs.org/api/application.html#app-config-errorhandler)
 
 ## 06.7 - Le dernier filet, puis le branchement de l'application
 
-Une erreur qu'**aucune frontière** n'a attrapée (un composant hors de la frontière, ou une erreur renvoyée par elle) arrive au gestionnaire global `app.config.errorHandler`. Ce doit être un filet de dernier recours : il **journalise** l'erreur pour qu'on la retrouve, et il **prévient** l'utilisateur par le service de notifications de l'étape 03, au lieu de la laisser passer en silence.
+Une erreur qu'**aucune frontière** n'a attrapée (celle d'un composant placé hors de la frontière, ou une erreur levée par le rendu de la frontière elle-même) arrive au gestionnaire global `app.config.errorHandler`. Ce doit être un filet de dernier recours : il **journalise** l'erreur pour qu'on la retrouve, et il **prévient** l'utilisateur par le service de notifications de l'étape 03, au lieu de la laisser passer en silence.
+
+Une limite à connaître : la frontière de la section précédente renvoie `false`, donc **ce qu'elle capte n'arrive jamais ici**, et `App.vue` n'écoute pas son événement `error`. Dans ce lab, une erreur de page capturée est donc affichée à l'utilisateur mais ni journalisée ni notifiée. Dans une application réelle, on écouterait `@error` sur la frontière pour l'envoyer à un service de suivi ; le lab s'arrête avant.
 
 Ouvrez `src/plugins/errorHandler.ts`. Les types sont fournis.
 
-**À vous** : écrivez `createErrorHandler` et `installErrorHandler`, puis supprimez la première ligne du fichier.
+**À vous** : écrivez `createErrorHandler` et `installErrorHandler`, puis supprimez la première ligne du fichier (le commentaire `eslint-disable`).
 
 **Critères :**
 
@@ -482,25 +491,53 @@ export function installErrorHandler(app: App, notify: Pick<NotifyApi, 'notify'>)
 D=~/byte-layers/vue/shop
 F="$D/src/plugins/errorHandler.ts"
 grep -q 'À écrire' "$F" && { echo "errorHandler.ts contient encore « À écrire » : écrivez createErrorHandler et installErrorHandler."; exit 1; }
-grep -q 'eslint-disable' "$F" && { echo "Supprimez la première ligne de errorHandler.ts (le commentaire eslint-disable) : le fichier est écrit."; exit 1; }
+head -1 "$F" | grep -q 'eslint-disable' && { echo "Supprimez la première ligne de errorHandler.ts (le commentaire eslint-disable) : le fichier est écrit."; exit 1; }
 (cd "$D" && npx vitest run src/plugins/errorHandler.spec.ts >/dev/null 2>&1) || { echo "Les tests du gestionnaire échouent : lancez « npx vitest run src/plugins/errorHandler.spec.ts » dans ~/byte-layers/vue/shop et lisez le premier message. Il doit journaliser avec console.error et notifier avec le niveau error."; exit 1; }
 echo "Une erreur non gérée est journalisée et signalée."
 ```
 
-Les deux pièces existent ; il reste à les brancher, dans deux fichiers que vous modifiez à la main. Dans `src/main.ts`, ajoutez l'import du gestionnaire à la suite des autres imports, puis son installation juste après `app.directive('countdown', vCountdown)`.
+Les deux pièces existent ; il reste à les brancher, dans deux fichiers existants que vous **modifiez à la main** : `src/main.ts` et `src/App.vue`. Commencez par `main.ts`. Votre fichier est celui de la section 04.7 : il crée `app`, `pinia`, `notify` (le service de l'étape 03, dont `notify.api` est l'API appelable hors d'un composant) et `queryClient`, installe les plugins, puis enregistre la directive. Vous y faites **deux ajouts**, marqués ci-dessous ; le reste ne bouge pas.
 
 ```ts
-import { installErrorHandler } from './plugins/errorHandler'
-```
-
-Puis l'installation, qui prend le service de notifications déjà créé dans ce fichier :
-
-```ts
+import { vCountdown } from './directives/countdown'
+import { installErrorHandler } from './plugins/errorHandler' // ajout 1 : avec les autres imports
+// … (createApp, pinia, notify, queryClient, app.use(...) : inchangés)
+app.directive('countdown', vCountdown)
 // Dernier filet : toute erreur qu'aucune frontière n'a attrapée est journalisée et signalée.
-installErrorHandler(app, notify.api)
+installErrorHandler(app, notify.api) // ajout 2 : juste après la directive
 ```
 
-Dans `src/App.vue`, la page doit être entourée de la frontière, réarmée par l'adresse courante. Remplacez le contenu du fichier par ceci : on ajoute l'import de `useRoute` et d'`ErrorBoundary`, la `route`, et la frontière autour de `<RouterView />`.
+Passez à `App.vue`. À la fin de l'étape 05, votre fichier est la coque suivante (si vous y avez ajouté autre chose, gardez-le) :
+
+```vue
+<script setup lang="ts">
+import AppHeader from '@/components/layout/AppHeader.vue'
+import NotifyHost from '@/components/layout/NotifyHost.vue'
+</script>
+
+<template>
+  <v-app>
+    <AppHeader />
+    <v-main>
+      <v-container>
+        <RouterView />
+      </v-container>
+    </v-main>
+    <NotifyHost />
+  </v-app>
+</template>
+```
+
+Il y a **deux ajouts** : dans `<script setup>`, l'import de `useRoute` et d'`ErrorBoundary`, puis la ligne `const route = useRoute()` ; dans le gabarit, `<RouterView />` est entouré de la frontière, réarmée par l'adresse courante (`route.fullPath`).
+
+| Où | Ajout |
+|---|---|
+| `<script setup>`, avant les imports existants | `import { useRoute } from 'vue-router'` |
+| `<script setup>`, après les imports existants | `import ErrorBoundary from '@/components/common/ErrorBoundary.vue'` puis `const route = useRoute()` |
+| `<template>`, autour de `<RouterView />` | `<ErrorBoundary :reset-key="route.fullPath">` avant, `</ErrorBoundary>` après |
+
+````solution
+`main.ts` : l'import `import { installErrorHandler } from './plugins/errorHandler'` et, après `app.directive('countdown', vCountdown)`, la ligne `installErrorHandler(app, notify.api)`. `App.vue` :
 
 ```vue
 <script setup lang="ts">
@@ -517,7 +554,6 @@ const route = useRoute()
     <AppHeader />
     <v-main>
       <v-container>
-        <!-- Une page qui plante n'emporte pas l'en-tête : la frontière se réarme à chaque changement de route. -->
         <ErrorBoundary :reset-key="route.fullPath">
           <RouterView />
         </ErrorBoundary>
@@ -527,9 +563,6 @@ const route = useRoute()
   </v-app>
 </template>
 ```
-
-````solution
-Dans `src/main.ts`, l'import `import { installErrorHandler } from './plugins/errorHandler'` et, après `app.directive('countdown', vCountdown)`, la ligne `installErrorHandler(app, notify.api)`. Le fichier `src/App.vue` est celui du bloc ci-dessus. Les versions complètes sont dans le kit : [main.ts](https://github.com/byte-layers/courses-vue-advanced/blob/main/kit/solutions/06/src/main.ts) et [App.vue](https://github.com/byte-layers/courses-vue-advanced/blob/main/kit/solutions/06/src/App.vue) (ce dernier contient aussi la cible `#modals` de la section suivante).
 ````
 
 ```verify
@@ -542,38 +575,43 @@ echo "Les erreurs sont isolées par page, et le dernier filet est installé."
 
 ## 06.8 - Téléporter la modale
 
-La fenêtre de mise est aujourd'hui un `v-dialog`. Pour la reprendre en main, avec ses attributs d'accessibilité, on l'écrit à la main avec **`Teleport`**. Une modale écrite à l'intérieur d'une carte, d'une grille ou d'une zone qui défile hérite de leurs contextes d'empilement et de leurs `overflow` : elle peut être coupée ou passer sous un autre élément. `<Teleport to="#modals">` **déplace ses enfants dans le DOM**, sous l'élément cible, tout en les laissant **dans l'arbre de composants** : les props, les événements, `provide` et `inject` fonctionnent comme si de rien n'était. Le socket de `useBid` y est donc retrouvé sans rien changer.
+La fenêtre de mise est aujourd'hui un `v-dialog`. Pour la reprendre en main, on l'écrit à la main avec **`Teleport`**. Une modale écrite à l'intérieur d'une carte, d'une grille ou d'une zone qui défile hérite de leurs contextes d'empilement et de leurs `overflow` : elle peut être coupée ou passer sous un autre élément. `<Teleport to="#modals">` **déplace ses enfants dans le DOM**, sous l'élément cible, tout en les laissant **dans l'arbre de composants** : les props, les événements, `provide` et `inject` fonctionnent comme si de rien n'était. Le socket de `useBid` y est donc retrouvé sans rien changer.
 
-La cible doit **exister** quand la modale s'affiche, sinon rien n'est rendu. On la place dans `App.vue`, **à l'intérieur de `<v-app>`** : le thème de Vuetify (couleurs, polices) s'applique à ce qui est dans l'élément racine de l'application, pas dans `index.html` : hors de `<v-app>` la carte perdrait ses couleurs. Ajoutez, dans `src/App.vue`, juste avant `</v-app>` :
+La cible doit **exister** quand la modale s'affiche, sinon rien n'est rendu. On la place dans `App.vue`, **à l'intérieur de `<v-app>`** : le thème de Vuetify (couleurs, polices) s'applique à ce qui est dans l'élément racine de l'application, pas dans `index.html` : hors de `<v-app>` la carte perdrait ses couleurs. Dans `src/App.vue`, ajoutez la ligne suivante juste après `<NotifyHost />`, avant `</v-app>` :
 
 ```vue
-<!-- Cible des modales (Teleport) : DANS v-app, pour garder le thème Vuetify. -->
 <div id="modals" />
 ```
 
-Une modale native doit aussi faire ce qu'un `v-dialog` faisait pour vous :
+Cette modale écrite à la main fait moins qu'un `v-dialog`, et il faut le savoir. Elle gère les points du tableau ci-dessous, mais **pas** le piège de focus (avec `aria-modal="true"`, la touche `Tab` peut encore sortir de la fenêtre vers la page) ni le verrouillage du défilement de la page derrière. Pour un produit réel, deux pistes : l'élément natif `<dialog>` ouvert avec `showModal()`, qui apporte le piège de focus et la couche supérieure, ou l'attribut `inert` posé sur le reste de la page pendant que la modale est ouverte. Ici on reste volontairement sur `Teleport` : c'est lui que l'exercice enseigne.
 
 | Exigence | Réalisation |
 |---|---|
 | un lecteur d'écran sait que c'est une fenêtre modale | `role="dialog"` et `aria-modal="true"` sur la carte |
-| elle a un nom | `aria-labelledby` pointe vers l'`id` du titre ; `useId()` fournit un identifiant unique, stable entre le serveur et le client |
+| elle a un nom | `aria-labelledby` pointe vers l'`id` du titre ; `useId()` (Vue 3.5, version du projet) fournit un identifiant unique |
 | Échap la ferme | un écouteur sur `document`, **retiré** au démontage |
 | le clavier y entre | à l'ouverture, le focus va sur la fenêtre (un élément avec `tabindex="-1"`) |
 | on n'est pas perdu en la fermant | à la fermeture, le focus **revient** à l'élément qui l'avait avant (le bouton « Enchérir ») |
 | un clic dehors la ferme | un fond (`backdrop`) qui émet `close` seulement s'il est cliqué lui-même (`@click.self`) |
 
-Ouvrez `src/features/auctions/components/AuctionModal.vue`. Elle contient encore la fenêtre `v-dialog` de l'étape 05, précédée d'un `TODO`. Supprimez le `TODO` en tête, puis faites trois changements, dans cet ordre.
+**Critères :**
 
-**1. Les imports.** `useId`, `onMounted` et `onBeforeUnmount` s'ajoutent à l'import de `vue` ; `BID_STEP` à celui de `../useBidRules` ; et les deux composants de l'étape s'importent.
+- le contenu est téléporté dans `#modals` (et non dans la page) ; la carte a `role="dialog"`, `aria-modal="true"` et un `aria-labelledby` qui désigne son titre ;
+- Échap, le bouton « Fermer » et un clic sur le fond émettent `close` (un clic **dans** la fenêtre non) ; après le démontage, Échap n'émet plus rien ;
+- le focus entre dans la fenêtre à l'ouverture et revient à l'élément précédent à la fermeture ;
+- le champ d'offre est un `BidAmountInput` en `v-model` (un clic sur « + » passe de 465 à 470), l'historique un `BidHistory`, et l'offre part toujours avec `expectedVersion`.
 
-```ts
-import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
-import { BID_STEP, useBidRules } from '../useBidRules'
-import BidAmountInput from './BidAmountInput.vue'
-import BidHistory from './BidHistory.vue'
-```
+Ouvrez `src/features/auctions/components/AuctionModal.vue`. Elle contient la fenêtre `v-dialog` de l'étape 05, précédée d'un commentaire `TODO` : supprimez ce commentaire (les lignes `//` en tête de `<script setup>`). Les noms déjà définis dans son script (`emit`, `minimum`, `amount`, `history`, `closed`, `submit`) servent tels quels. Le parent (`AuctionsPage`) monte la modale avec un `v-if` : elle est donc créée à l'ouverture et détruite à la fermeture, ce que le code de focus ci-dessous suppose. Faites ensuite **cinq modifications**, dans cet ordre.
 
-**2. L'accessibilité, dans `<script setup>`.** Ajoutez ce bloc après la déclaration de `const history = …` : l'identifiant du titre, la référence de la fenêtre, le focus et la touche Échap.
+**1. Les imports.** Remplacez les deux lignes d'import concernées, et ajoutez les deux imports de composants.
+
+| Avant | Après |
+|---|---|
+| `import { computed, ref, watch } from 'vue'` | `import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'` |
+| `import { useBidRules } from '../useBidRules'` | `import { BID_STEP, useBidRules } from '../useBidRules'` |
+| (à la suite des imports) | `import BidAmountInput from './BidAmountInput.vue'` et `import BidHistory from './BidHistory.vue'` |
+
+**2. L'accessibilité, dans `<script setup>`.** Ajoutez ce bloc juste après la ligne `const history = useBidHistory(…)` : l'identifiant du titre, la référence de la fenêtre, le focus et la touche Échap.
 
 ```ts
 const titleId = useId()
@@ -594,10 +632,10 @@ onBeforeUnmount(() => {
 })
 ```
 
-**3. Le gabarit.** Le `v-dialog` disparaît. Gardez tout son contenu (prix, meneur, compte à rebours, région `aria-live`, formulaire, bouton « Fermer »), mais enveloppez-le ainsi, et faites les deux remplacements signalés.
+**3. L'enveloppe du gabarit.** Au début de `<template>`, les trois lignes `<v-dialog …>`, `<v-card data-testid="auction-modal" :title="auction.title">` et `<v-card-text>` sont remplacées par ce bloc (le contenu de la carte, du prix jusqu'au bouton « Fermer », ne change pas).
 
 ```vue
-<template>
+  <!-- Téléportée dans #modals (voir App.vue), hors de la page : pas de z-index ni d'overflow du parent. -->
   <Teleport to="#modals">
     <div class="modal-backdrop" data-testid="auction-modal-backdrop" @click.self="emit('close')">
       <v-card
@@ -610,32 +648,35 @@ onBeforeUnmount(() => {
         <div ref="dialog" tabindex="-1" class="modal-focus">
           <v-card-title :id="titleId">{{ auction.title }}</v-card-title>
           <v-card-text>
-            <!-- prix, meneur, compte à rebours, région aria-live : inchangés -->
-            <form v-if="!closed" @submit.prevent="submit">
-              <!-- champ « Votre nom » : inchangé -->
-              <BidAmountInput
-                v-model="amount"
-                :min="minimum"
-                :step="BID_STEP"
-                data-testid="auction-modal-amount"
-              />
-              <!-- erreur et bouton « Enchérir » : inchangés -->
-            </form>
-            <h3 class="text-subtitle-1 mt-4">Dernières offres</h3>
-            <BidHistory :bids="history" />
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer />
-            <v-btn data-testid="auction-modal-close" @click="emit('close')">Fermer</v-btn>
-          </v-card-actions>
+```
+
+À la fin du gabarit, les deux lignes `</v-card>` et `</v-dialog>` qui suivent `</v-card-actions>` sont remplacées par les fermetures de l'enveloppe.
+
+```vue
         </div>
       </v-card>
     </div>
   </Teleport>
-</template>
 ```
 
-Les deux remplacements : le `v-text-field v-model.number="amount"` devient `BidAmountInput`, et le bloc « Dernières offres » (le paragraphe « Aucune offre… » et la liste `ul` écrits à la main) devient `<BidHistory :bids="history" />`. Il manque le style du fond et de la carte : ajoutez à la fin du fichier ce bloc, qui fixe la fenêtre sur tout l'écran, au-dessus du reste (`z-index` élevé).
+**4. Les deux composants.** Le `v-text-field v-model.number="amount"` (avec ses attributs `label`, `type`, `:min`, `step` et son `data-testid`) est remplacé par le champ en `v-model` ; le paragraphe « Aucune offre reçue… » et la liste `<ul>` de l'historique, écrits à la main sous le titre « Dernières offres », sont remplacés par la ligne `<BidHistory>`.
+
+```vue
+<BidAmountInput
+  v-model="amount"
+  :min="minimum"
+  :step="BID_STEP"
+  data-testid="auction-modal-amount"
+/>
+```
+
+Et l'historique :
+
+```vue
+<BidHistory :bids="history" />
+```
+
+**5. Le style.** Ajoutez à la fin du fichier ce bloc, qui fixe le fond sur tout l'écran, au-dessus du reste (`z-index` élevé). Le contour du focus est retiré sur la fenêtre elle-même, qui n'est pas un contrôle : ne le retirez jamais d'un bouton ou d'un champ.
 
 ```vue
 <style scoped>
@@ -661,32 +702,30 @@ Les deux remplacements : le `v-text-field v-model.number="amount"` devient `BidA
 </style>
 ```
 
-**Critères :**
-
-- le contenu est téléporté dans `#modals` (et non dans la page) ; la carte a `role="dialog"`, `aria-modal="true"` et un `aria-labelledby` qui désigne son titre ;
-- Échap, le bouton « Fermer » et un clic sur le fond émettent `close` (un clic **dans** la fenêtre non) ; après le démontage, Échap n'émet plus rien ;
-- le focus entre dans la fenêtre à l'ouverture et revient à l'élément précédent à la fermeture ;
-- le champ d'offre est un `BidAmountInput` en `v-model` (un clic sur « + » passe de 465 à 470), l'historique un `BidHistory`, et l'offre part toujours avec `expectedVersion`.
+```hint
+Si la modale s'affiche sans couleurs ou pas du tout, vérifiez la cible : `<div id="modals" />` doit être **dans** `<v-app>` de `App.vue`. Si un clic dans la fenêtre la ferme, le fond doit porter `@click.self` et non `@click`.
+```
 
 ````solution
-Le fichier complet est dans le kit : [AuctionModal.vue](https://github.com/byte-layers/courses-vue-advanced/blob/main/kit/solutions/06/src/features/auctions/components/AuctionModal.vue), ou dans `~/byte-layers/vue/course/kit/solutions/06/src/features/auctions/components/AuctionModal.vue`. N'oubliez pas la cible dans `src/App.vue` : la ligne `<div id="modals" />` juste avant `</v-app>`.
+Le fichier complet est dans le kit : [AuctionModal.vue](https://github.com/byte-layers/courses-vue-advanced/blob/main/kit/solutions/06/src/features/auctions/components/AuctionModal.vue), ou dans `~/byte-layers/vue/course/kit/solutions/06/src/features/auctions/components/AuctionModal.vue`. La cible est la ligne `<div id="modals" />` de `src/App.vue`, juste avant `</v-app>`.
 ````
 
 ```verify
 D=~/byte-layers/vue/shop
 F="$D/src/features/auctions/components/AuctionModal.vue"
-grep -q 'TODO' "$F" && { echo "AuctionModal.vue contient encore le TODO de l'étape : supprimez-le une fois la modale réécrite."; exit 1; }
+grep -q '^// TODO' "$F" && { echo "AuctionModal.vue contient encore le commentaire TODO en tête de <script setup> : supprimez-le une fois la modale réécrite."; exit 1; }
 grep -q '<Teleport' "$F" || { echo "AuctionModal.vue n'utilise pas Teleport : enveloppez le gabarit dans <Teleport to=\"#modals\">."; exit 1; }
 grep -q 'id="modals"' "$D/src/App.vue" || { echo "App.vue n'a pas la cible des modales : ajoutez <div id=\"modals\" /> dans <v-app>, juste avant </v-app>."; exit 1; }
-(cd "$D" && npx vitest run src/features/auctions/components/AuctionModal.spec.ts src/App.spec.ts >/dev/null 2>&1) || { echo "Les tests de la modale ou de l'application échouent : lancez « npx vitest run src/features/auctions/components/AuctionModal.spec.ts src/App.spec.ts » dans ~/byte-layers/vue/shop et lisez le premier message. Il nomme le point : contenu dans #modals, rôle dialog, Échap, focus rendu, ou #modals dans v-app."; exit 1; }
+(cd "$D" && npx vitest run src/features/auctions/components/AuctionModal.spec.ts >/dev/null 2>&1) || { echo "Les tests de la modale échouent : lancez « npx vitest run src/features/auctions/components/AuctionModal.spec.ts » dans ~/byte-layers/vue/shop et lisez le premier message. Il nomme le point : contenu dans #modals, rôle dialog, Échap, focus rendu."; exit 1; }
+(cd "$D" && npx vitest run src/App.spec.ts >/dev/null 2>&1) || { echo "Les tests de l'application échouent : lancez « npx vitest run src/App.spec.ts » dans ~/byte-layers/vue/shop. Ils attendent #modals dans v-app, la frontière autour de RouterView, et son réarmement par la route."; exit 1; }
 echo "La modale est téléportée, accessible au clavier, et la page est protégée par sa frontière."
 ```
 
-> 📖 [Vue : `Teleport`](https://vuejs.org/guide/built-ins/teleport.html) · [Vue : `useId`](https://vuejs.org/api/general.html) · [WAI-ARIA : le motif « dialog (modal) »](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+> 📖 [Vue : `Teleport`](https://vuejs.org/guide/built-ins/teleport.html) · [Vue : `useId` (Vue 3.5)](https://vuejs.org/api/composition-api-helpers.html#useid) · [WAI-ARIA : le motif « dialog (modal) »](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) · [MDN : l'élément `<dialog>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog)
 
 ## 06.9 - Les composants dans le navigateur
 
-Relancez ce qui doit tourner. Si `npm run dev` et le serveur d'enchères de l'étape 05 sont encore ouverts dans leurs terminaux, ne faites rien : Vite recharge les fichiers modifiés. Sinon, relancez-les, d'abord le serveur (sans bots), puis l'application.
+Pour cette section, trois terminaux : le terminal **Serveur** (le serveur d'enchères), le terminal **Application** (`npm run dev`) et un terminal **Commandes** pour les `curl`. Si le serveur de l'étape 05 tourne encore dans son terminal, laissez-le ; sinon relancez-le comme à l'étape 05. Même chose pour l'application.
 
 ```exec
 label: "Serveur d'enchères (laisser tourner)"
@@ -694,7 +733,7 @@ label: "Serveur d'enchères (laisser tourner)"
 cd ~/byte-layers/vue/course/kit/server && BOTS=off npm start
 ```
 
-Puis l'application, dans un second terminal :
+Puis l'application, dans le terminal Application :
 
 ```exec
 label: "Application (laisser tourner)"
@@ -702,22 +741,42 @@ label: "Application (laisser tourner)"
 cd ~/byte-layers/vue/shop && npm run dev
 ```
 
+Les essais de l'étape 05 ont fait monter l'iPhone à 1 000 €. Pour que les montants de cette section soient vrais, remettez les enchères à zéro depuis le terminal Commandes : le serveur renvoie la liste, et la page se met à jour toute seule.
+
+```exec
+curl -X POST localhost:4310/control/reset
+```
+
 Faites ces essais, dans l'ordre :
 
-1. **La grille.** Ouvrez `http://localhost:5173/products` : le catalogue s'affiche comme avant, 12 cartes. Dans l'onglet Elements des outils de développement, chaque carte est dans un élément `data-testid="product-grid-cell"`, sous `data-testid="product-grid"`.
-2. **La modale téléportée.** Ouvrez `/auctions` et cliquez sur « Enchérir » sur l'iPhone. Dans l'onglet Elements, la fenêtre (`role="dialog"`) n'est **pas** dans la page, mais dans `<div id="modals">`, dernier enfant de l'élément `.v-application`. Le focus est dans la fenêtre : la touche `Tab` ne ressort pas tout de suite vers la page.
-3. **Le champ en `v-model`.** Cliquez sur « + » : l'offre passe de 455 à 460, le bouton « − » est désactivé à 455 (le minimum). Tapez `abc` ou videz le champ : le montant ne devient jamais invalide.
-4. **L'historique animé.** Cliquez sur « Enchérir » dans la fenêtre : une ligne arrive **en tête** en glissant. Depuis un second terminal, faites miser un bot, et regardez la nouvelle ligne descendre les autres.
+**La grille.** Ouvrez `http://localhost:5173/products` : le catalogue s'affiche comme avant, 12 cartes. Dans l'onglet Elements des outils de développement, la grille porte `data-testid="product-list"` (celui que la page donne à `ProductGrid`, qui remplace celui de sa racine), et chaque carte est dans un élément `data-testid="product-grid-cell"`.
+
+**La modale téléportée.** Ouvrez `/auctions` et cliquez sur « Enchérir » sur l'iPhone (450 €). Dans l'onglet Elements, la fenêtre (`role="dialog"`) n'est **pas** dans la page, mais dans `<div id="modals">`, à l'intérieur de l'élément `.v-application`. Le focus est dans la fenêtre.
+
+**Le champ en `v-model`.** L'offre est préremplie à 455. Cliquez sur « + » : elle passe à 460, et le bouton « − » est désactivé à 455 (le minimum). Tapez `abc` ou videz le champ : le montant ne devient jamais invalide.
+
+**L'historique animé.** Cliquez sur « Enchérir » dans la fenêtre : une ligne arrive **en tête** en glissant. Depuis le terminal Commandes, faites miser un bot et regardez la nouvelle ligne repousser les autres.
 
 ```exec
 curl -X POST localhost:4310/control/bot-bid -H 'Content-Type: application/json' -d '{"productId":123,"amount":800}'
 ```
 
-5. **Le focus rendu.** Appuyez sur `Échap` : la fenêtre se ferme, et le focus est revenu sur le bouton « Enchérir » de la carte de l'iPhone (il a le contour du focus).
-6. **La frontière d'erreur.** Dans `src/features/products/pages/ProductListPage.vue`, ajoutez provisoirement `throw new Error('essai de la frontière')` comme première ligne de la fonction `refreshCatalog`. Sur `/products`, cliquez sur « Actualiser » : la liste est remplacée par une alerte rouge « Cette partie de la page a rencontré une erreur : essai de la frontière » avec « Réessayer », **et l'en-tête reste en place**. Cliquez sur « Enchères » dans l'en-tête : la page des enchères s'affiche, la frontière s'est réarmée avec la route. Supprimez la ligne ajoutée, enregistrez.
+**Le focus rendu.** Appuyez sur `Échap` : la fenêtre se ferme, et le focus est revenu sur le bouton « Enchérir » de la carte de l'iPhone (il a le contour du focus).
 
 ```acknowledge
-J'ai vu la modale dans #modals, l'historique glisser, le focus revenir sur le bouton et la frontière isoler la page en erreur
+J'ai vu la modale dans #modals, le champ en v-model et l'historique glisser, puis le focus revenir sur le bouton
+```
+
+**La frontière d'erreur.** Dans `src/features/products/pages/ProductListPage.vue`, ajoutez provisoirement `throw new Error('essai de la frontière')` comme première ligne de la fonction `refreshCatalog` (le bouton « Actualiser » vient de l'étape 04). Sur `/products`, cliquez sur « Actualiser » : la liste est remplacée par une alerte rouge « Cette partie de la page a rencontré une erreur : essai de la frontière » avec « Réessayer », **et l'en-tête reste en place**. Cliquez sur « Enchères » dans l'en-tête : la page des enchères s'affiche, la frontière s'est réarmée avec la route. Puis **supprimez la ligne ajoutée** et enregistrez : le bouton ci-dessous contrôle qu'elle a bien disparu.
+
+```acknowledge
+J'ai vu la frontière isoler la page en erreur, l'en-tête rester en place, puis j'ai supprimé la ligne throw
+```
+
+```verify
+D=~/byte-layers/vue/shop
+grep -q "essai de la frontière" "$D/src/features/products/pages/ProductListPage.vue" && { echo "Il reste la ligne « throw new Error('essai de la frontière') » dans ProductListPage.vue : supprimez-la, c'était un essai provisoire (elle fait aussi échouer le lint)."; exit 1; }
+echo "La ligne d'essai a été retirée."
 ```
 
 ## 06.10 - Tout vérifier d'un coup
@@ -732,11 +791,11 @@ D=~/byte-layers/vue/shop
 echo "Type-check, lint et tests passent : l'application est dans l'état de fin d'étape 06."
 ```
 
-## 06.11 - Option (+30 min) : le checkout avec VeeValidate et Zod
+## 06.11 - Option (+40 min) : le checkout avec VeeValidate et Zod
 
-> **Cette section est facultative.** Elle ajoute 30 minutes et se joue **entièrement à part** : rien dans l'étape 07 n'en dépend, et aucune section précédente ne la suppose. Vous pouvez passer directement à la section 06.14 (le récap). Le rattrapage de l'étape 06 (`catch-up.sh 06`) contient cette option : si vous la sautez, vous pourrez toujours récupérer la page de commande par un rattrapage plus tard.
+> **Cette section est facultative.** Elle ajoute environ 40 minutes (sections 06.11 à 06.14) et se joue **entièrement à part** : rien dans l'étape 07 n'en dépend, et aucune section précédente ne la suppose. Pour la sauter, passez directement à la section 06.15 (le récap). Le rattrapage `sh ~/byte-layers/vue/course/kit/catch-up.sh 06`, comme ceux des étapes suivantes, **contient l'option complète** (page de commande, route, bouton du panier, tests verts) : sauter l'option ne vous prive de rien. Décidez **avant** de copier les fichiers ci-dessous : si vous les copiez puis renoncez avant d'avoir écrit l'adaptateur, `npm test` restera rouge (un squelette `À écrire`), et le retour en arrière est ce rattrapage, qui écrase vos fichiers du même nom (committez d'abord).
 
-On ajoute une page `/checkout` : un formulaire de commande dont les règles de validation sont décrites **une seule fois**, avec un schéma Zod, et dont **VeeValidate** gère l'état (valeurs, erreurs, soumission). **Support** d'abord : copiez les fichiers de l'option, qui remplacent le routeur (la route `/checkout`, réservée aux personnes connectées par la garde de l'étape 03) et la page du panier (un bouton « Passer commande »).
+On ajoute une page `/checkout` : un formulaire de commande dont les règles de validation sont décrites **une seule fois**, avec un schéma Zod, et dont **VeeValidate** gère l'état (valeurs, erreurs, soumission). **Support** d'abord : copiez les fichiers de l'option. Ils **remplacent** `src/router/index.ts` (la route `/checkout`, réservée aux personnes connectées par la garde de l'étape 03) et la page du panier (un bouton « Passer commande ») ; committez d'abord si vous avez modifié ces fichiers.
 
 ```exec
 cp -R ~/byte-layers/vue/course/kit/steps/06-option/. ~/byte-layers/vue/shop/
@@ -748,7 +807,7 @@ Installez VeeValidate, avec une version fixée.
 cd ~/byte-layers/vue/shop && npm install -E vee-validate@4.15.1
 ```
 
-Un mot sur ce qui **n'est pas** installé : `@vee-validate/zod`, le paquet officiel qui relie les deux bibliothèques, déclare une dépendance sur Zod 3, et le projet utilise Zod 4. Il ne s'installe pas proprement ; il reste donc un adaptateur de quinze lignes à écrire, et c'est un bon exercice : il montre ce que VeeValidate attend d'un schéma.
+Un mot sur ce qui **n'est pas** installé : `@vee-validate/zod`, le paquet officiel qui relie les deux bibliothèques, déclare une dépendance sur Zod 3, et le projet utilise Zod 4 (installé à l'étape 04). Il ne s'installe pas proprement ; il reste donc un adaptateur d'une quinzaine de lignes à écrire, et c'est un bon exercice : il montre ce que VeeValidate attend d'un schéma. Voici ce que contient la copie.
 
 | Fichier fourni (sous `src/features/checkout/`) | Nature |
 |---|---|
@@ -813,7 +872,7 @@ La page `CheckoutPage.vue` est fournie. Lisez-la avant de l'essayer : `useForm({
 
 Essayez-la, dans le navigateur, avec le serveur et l'application lancés :
 
-1. Sur `/products`, ajoutez un produit au panier, ouvrez le panier et cliquez sur « Passer commande ». Sans session, vous arrivez sur `/login?redirect=/checkout` : c'est la garde de l'étape 03. Connectez-vous avec `emilys` et `emilyspass` ; vous revenez sur `/checkout`, où le nom est prérempli « Emily Johnson ».
+1. Sur `/products`, ajoutez un produit au panier, ouvrez le panier et cliquez sur « Passer commande ». Sans session, vous arrivez sur `/login?redirect=/checkout` : c'est la garde de l'étape 03, qui passe l'adresse demandée dans le paramètre `redirect`. Connectez-vous avec `emilys` et `emilyspass` ; vous revenez sur `/checkout`, où le nom est prérempli « Emily Johnson ».
 2. Cliquez sur « Commander » sans rien remplir : **cinq** messages apparaissent (e-mail invalide, adresse, code postal à 5 chiffres, ville, conditions de vente) et « 5 champ(s) à corriger. » s'affiche sous le bouton.
 3. Tapez `12` dans « Code postal » : aucun message tant que vous ne **quittez** pas le champ. Corrigez-le avec `31000`, remplissez les autres champs, cochez les conditions de vente et commandez : une confirmation « Commande CMD-… enregistrée (simulée : DummyJSON ne conserve rien) » remplace le formulaire, et le panier est vidé.
 
@@ -824,17 +883,28 @@ J'ai vu les cinq messages d'erreur, la validation à la sortie du champ, puis la
 ```verify
 D=~/byte-layers/vue/shop
 (cd "$D" && npx vitest run src/features/checkout/pages/CheckoutPage.spec.ts >/dev/null 2>&1) || { echo "Les tests de la page de commande échouent : lancez « npx vitest run src/features/checkout/pages/CheckoutPage.spec.ts » dans ~/byte-layers/vue/shop. Ils s'appuient sur votre adaptateur : relisez la section 06.12 si toVeeSchema.spec.ts n'est pas vert."; exit 1; }
-(cd "$D" && npm run -s type-check >/dev/null 2>&1) || { echo "Le type-check échoue : lancez « npm run type-check » dans ~/byte-layers/vue/shop et lisez la première erreur."; exit 1; }
-echo "Le checkout valide les saisies avec le schéma Zod, et l'application compile."
+echo "La page de commande valide les saisies avec le schéma Zod."
 ```
 
-## Récap
+## 06.14 - Après l'option : tout revérifier
 
-- Un composant **générique** (`generic="T extends { id: number }"`) laisse TypeScript déduire `T` de ses props, et `defineSlots` type les **slots à portée** avec ce même `T` : dans `#item="{ item }"`, une faute de frappe devient une erreur de compilation.
+L'option a ajouté des fichiers, des tests et une dépendance : relancez les trois commandes de qualité, comme à la section 06.10.
+
+```verify
+D=~/byte-layers/vue/shop
+(cd "$D" && npm run -s type-check >/dev/null 2>&1) || { echo "Le type-check échoue : lancez « npm run type-check » dans ~/byte-layers/vue/shop et lisez la première erreur."; exit 1; }
+(cd "$D" && npm run -s lint >/dev/null 2>&1) || { echo "Le lint échoue : lancez « npm run lint » et lisez la première erreur."; exit 1; }
+(cd "$D" && npm test >/dev/null 2>&1) || { echo "Des tests échouent : lancez « npm test » et lisez le premier test en échec. Si un squelette de l'option contient encore « À écrire », terminez la section 06.12, ou lancez sh ~/byte-layers/vue/course/kit/catch-up.sh 06 pour récupérer l'option complète."; exit 1; }
+echo "Avec ou sans l'option, type-check, lint et tests passent : l'application est dans l'état de fin d'étape 06."
+```
+
+## 06.15 - Récap
+
+- Un composant **générique** (`generic="T extends { id: number }"`) laisse TypeScript déduire `T` de ses props, et `defineSlots` type explicitement les **slots à portée** avec ce même `T` : dans `#item="{ item }"`, une faute de frappe devient une erreur du type-check.
 - `defineModel` remplace la prop `modelValue` et l'événement `update:modelValue` par **une ref** : le composant se branche en `v-model`, avec une seule source de vérité, celle du parent.
 - `TransitionGroup` anime l'entrée, la sortie et le déplacement des lignes d'un `v-for`, à condition d'une `key` stable (la `version`, pas l'index) et d'une ligne sortante en `position: absolute`.
-- `onErrorCaptured` écrit une **frontière d'erreur** : renvoyer `false` arrête la remontée, et `app.config.errorHandler` reste le dernier filet, qui journalise et prévient.
-- `Teleport` déplace la modale dans le DOM (sous `#modals`, dans `<v-app>` pour garder le thème) sans la sortir de l'arbre de composants ; une modale native doit gérer `role="dialog"`, `aria-modal`, `aria-labelledby`, Échap et le focus.
+- `onErrorCaptured` écrit une **frontière d'erreur** : renvoyer `false` arrête la remontée, ce qui veut dire que le dernier filet `app.config.errorHandler` ne voit pas ce que la frontière capte (écouter `@error` serait la suite en production).
+- `Teleport` déplace la modale dans le DOM (sous `#modals`, dans `<v-app>` pour garder le thème) sans la sortir de l'arbre de composants ; une modale écrite à la main gère `role="dialog"`, `aria-modal`, `aria-labelledby`, Échap et le focus, mais pas le piège de focus : `<dialog>` ou `inert` sont la suite.
 - Option, si vous l'avez faite : un schéma Zod décrit le formulaire une fois, un petit adaptateur le rend lisible par VeeValidate, et les erreurs s'affichent à la sortie du champ.
 
 L'étape suivante change de regard : au lieu d'écrire, on **mesure**. Un serveur qui envoie dix offres par seconde montrera combien de rendus coûte l'historique que vous venez d'animer, et ce qu'on peut faire sans deviner.

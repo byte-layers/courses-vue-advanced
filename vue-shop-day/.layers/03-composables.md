@@ -5,7 +5,9 @@ description: "Transformer le panier en store Pinia persistant, écrire un plugin
 
 La boutique a un panier qui fonctionne, mais fragile : il vit sous un composant fournisseur, il disparaît au rechargement et rien ne protège les pages réservées. Cette étape suit un seul fil : le panier devient un **store Pinia**, puis il est **persisté**, puis on ajoute ce qu'il faut pour qu'un utilisateur connecté puisse le retrouver, et plus tard le passer en caisse : un plugin de notifications, une directive de compte à rebours, une garde de route et un client http qui renouvelle le jeton d'accès sans se tromper. Vous écrivez cinq fichiers, avec des tests fournis, et vous modifiez une dizaine de fichiers de l'application pour que tout fonctionne dans le navigateur.
 
-> 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 02, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 02` : le script copie le code attendu dans `~/byte-layers/vue/shop` et écrase vos fichiers du même nom, pensez à les committer avant.
+**Durée** : c'est l'étape la plus dense du lab, **environ 2 heures** (comptez 2 h 30 si vous lisez chaque tableau « Avant / Après » en détail). Les sections 03.6 à 03.9 (plugin de notifications, directive de compte à rebours) sont indépendantes du panier et de l'authentification, mais la suite s'appuie sur elles : si vous prenez du retard, faites-les en vous aidant des solutions, puis consacrez votre temps à la persistance, à la garde et au client http.
+
+> 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 02, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 02` : le script copie le code attendu dans `~/byte-layers/vue/shop` et écrase vos fichiers du même nom, copiez d'abord votre dossier `src` ailleurs si vous voulez garder vos versions.
 
 ## 03.1 - Support : copier les fichiers fournis et installer Pinia
 
@@ -77,7 +79,7 @@ export const cartKey: InjectionKey<Cart> = Symbol('cart')
 // const cart = inject(cartKey) // type : Cart | undefined, déduit de la clé
 ```
 
-Vous écrirez une vraie clé typée à la section 03.6. Les deux autres limites demandent un autre outil : un **store Pinia**. Un store est une instance unique par application, créée par `defineStore`, accessible partout une fois Pinia installé, et visible dans les Devtools. Le style « setup » de Pinia reprend ce que vous connaissez de `<script setup>` :
+Vous retrouverez une clé typée, fournie cette fois, à la section 03.6. Les deux autres limites demandent un autre outil : un **store Pinia**. Un store est une instance unique par application, créée par `defineStore`, accessible partout une fois Pinia installé, et visible dans les Devtools. Le style « setup » de Pinia reprend ce que vous connaissez de `<script setup>` :
 
 | Dans le store | Rôle |
 |---|---|
@@ -154,23 +156,23 @@ Le fichier de tests contient aussi les tests de persistance, que vous satisferez
 
 ```verify
 D=~/byte-layers/vue/shop
-(cd "$D" && npx vitest run src/features/cart/cartStore.spec.ts -t 'ajoute un produit|incrémente|modifie la quantité|retire une ligne|calcule le nombre' >/dev/null 2>&1) || { echo "Les tests du store échouent : lancez « npx vitest run src/features/cart/cartStore.spec.ts » dans ~/byte-layers/vue/shop ; chaque test dit quelle action ou quel total est faux."; exit 1; }
+(cd "$D" && npx vitest run src/features/cart/cartStore.spec.ts -t 'ajoute un produit|incrémente|modifie la quantité|retire une ligne|calcule le nombre' 2>&1 | grep -q '5 passed') || { echo "Les tests du store échouent : lancez « npx vitest run src/features/cart/cartStore.spec.ts » dans ~/byte-layers/vue/shop ; chaque test dit quelle action ou quel total est faux."; exit 1; }
 echo "Le store du panier ajoute, modifie, retire et totalise."
 ```
 
 ## 03.4 - Persister le panier dans localStorage
 
-Un panier qui disparaît au rechargement fait perdre des ventes. On le sauvegarde dans `localStorage` à chaque changement, et on le relit à la création du store. Deux fonctions du même fichier s'en chargent, `loadCart` et `saveCart`, et le store les branche.
+Un panier qui disparaît au rechargement est une mauvaise surprise pour l'utilisateur. On le sauvegarde dans `localStorage` à chaque changement, et on le relit à la création du store. Deux fonctions du même fichier s'en chargent, `loadCart` et `saveCart`, et le store les branche.
 
 Le point délicat est `loadCart`. Ce qu'on relit vient **de l'extérieur du code** : un autre onglet, une ancienne version de l'application, un utilisateur qui édite le stockage. Elle ne doit donc jamais lever d'exception, et ne doit jamais renvoyer une ligne mal formée qui ferait planter l'affichage. Même principe pour `saveCart` : un stockage plein ou bloqué (navigation privée) ne doit pas casser l'application, le panier reste alors en mémoire.
 
-Le déclencheur de la sauvegarde est un `watch` sur `items`. Un `watch` sur un `ref` de tableau ne se déclenche qu'au **remplacement** du tableau : `existing.quantity++` ne le réveille pas. Il faut l'option `{ deep: true }`, qui observe aussi les modifications internes (c'est le même mécanisme que `shallowRef` et `triggerRef` à l'étape 02, vu de l'autre côté).
+Le déclencheur de la sauvegarde est un `watch` sur `items`. Un `watch` sur un `ref` de tableau ne se déclenche qu'au **remplacement** du tableau : `existing.quantity++` ne le réveille pas. Il faut l'option `{ deep: true }`, qui observe aussi les modifications internes (à l'étape 02, `shallowRef` supprimait cette profondeur ; ici on la demande explicitement).
 
 **À vous** : dans `cartStore.ts`, écrivez `loadCart` et `saveCart`, faites partir `items` de `loadCart()`, ajoutez le `watch`, puis supprimez la première ligne du fichier (le commentaire `eslint-disable` du squelette).
 
 **Critères :**
 
-- `loadCart` renvoie `[]` si rien n'est sauvegardé, si le JSON est corrompu ou si le contenu n'est pas un tableau ; elle ignore les lignes dont `id`, `price` ou `quantity` ne sont pas des nombres, ou dont la quantité n'est pas un entier strictement positif ;
+- `loadCart` renvoie `[]` si rien n'est sauvegardé, si le JSON est corrompu ou si le contenu n'est pas un tableau ; elle ignore les lignes mal formées : `id`, `price` et `quantity` doivent être des nombres, `title` et `thumbnail` des chaînes, et la quantité un entier strictement positif ;
 - `saveCart` écrit le panier en JSON sous la clé `CART_STORAGE_KEY` et n'échoue jamais ;
 - le store relit le panier à sa création et le réécrit à chaque changement, y compris un `quantity` modifié en place.
 
@@ -256,7 +258,7 @@ app.use(pinia).use(vuetify).use(router)
 app.mount('#app')
 ```
 
-Pinia s'installe **avant** le routeur : à l'installation, le routeur lance la première navigation, et la garde de la section 03.10 lira le store à ce moment-là. Il n'y a plus de fournisseur à placer dans l'arbre : remplacez le contenu de `src/App.vue` par la coque simplifiée.
+Pinia s'installe **avant** le routeur : à l'installation, le routeur lance la première navigation, et une garde de route qui lit un store a besoin que Pinia soit déjà actif. Il n'y a plus de fournisseur à placer dans l'arbre : remplacez le contenu de `src/App.vue` par la coque simplifiée.
 
 ```vue
 <script setup lang="ts">
@@ -296,13 +298,15 @@ Dans `src/features/cart/pages/CartPage.vue` :
 | `cart.totalPrice.value` | `cart.totalPrice` |
 | `cart.clearCart()` | `cart.clear()` |
 
-Dans `src/features/products/components/ProductCard.vue` et `src/features/products/pages/ProductDetailPage.vue` :
+Dans `src/features/products/components/ProductCard.vue` et `src/features/products/pages/ProductDetailPage.vue` (la fonction `add` de la fiche est donnée juste après) :
 
 | Avant | Après |
 |---|---|
 | `import { useInjectedCart } from '@/features/cart/useCart'` | `import { useCartStore } from '@/features/cart/cartStore'` |
 | `const cart = useInjectedCart()` | `const cart = useCartStore()` |
 | `cart.addToCart(…)` | `cart.add(…)` |
+
+Dans la fiche, l'appel devient `cart.add({ id: p.id, title: p.title, price: p.price, thumbnail: p.thumbnail })`, avec `p` le produit reçu en paramètre.
 
 Enfin, supprimez les trois fichiers de l'ancien panier : `src/features/cart/useCart.ts`, `src/features/cart/CartProvider.vue` et `src/features/cart/useCart.spec.ts`. Le test de l'ancien composable disparaît avec lui : le store a ses propres tests.
 
@@ -318,12 +322,12 @@ echo "L'application utilise le store du panier, et le type-check passe."
 Regardons le résultat dans le navigateur. Lancez le serveur de développement, dans un terminal que vous laissez ouvert. Si `npm run dev` tourne encore depuis l'étape 01, arrêtez-le d'abord avec `Ctrl+C` : un nouveau paquet vient d'être installé, et Vite doit repartir de zéro.
 
 ```exec
-label: "Application (laisser tourner)"
+label: "Boutique (laisser tourner)"
 ---
 cd ~/byte-layers/vue/shop && npm run dev
 ```
 
-Ouvrez `http://localhost:5173/products`. Si la page affiche une erreur `Failed to fetch dynamically imported module` juste après le démarrage, rechargez-la : Vite réoptimise ses dépendances au premier chargement. Cliquez trois fois sur « Ajouter au panier » : le badge du panier affiche **3**. Rechargez la page : il affiche toujours 3, parce que le panier a été relu depuis `localStorage`. Dans les outils de développement, onglet Application, rubrique Local Storage, la clé `shop.cart` contient les lignes en JSON. Si les Devtools de Vue sont installés, l'onglet Pinia montre le store `cart` et son état.
+Ouvrez la page `/products` à l'adresse que Vite affiche (`http://localhost:5173` en général). Si la page affiche une erreur `Failed to fetch dynamically imported module` juste après le démarrage, rechargez-la : Vite réoptimise ses dépendances au premier chargement. Cliquez trois fois sur « Ajouter au panier » : le badge du panier affiche **3**. Rechargez la page : il affiche toujours 3, parce que le panier a été relu depuis `localStorage`. Dans les outils de développement, onglet Application, rubrique Local Storage, la clé `shop.cart` contient les lignes en JSON. Si les Devtools de Vue sont installés, l'onglet Pinia montre le store `cart` et son état.
 
 ```acknowledge
 J'ai vu le badge rester à 3 après le rechargement
@@ -410,7 +414,7 @@ echo "Le plugin de notifications fournit son API, avec une clé typée."
 
 ## 03.7 - Installer le plugin et afficher les toasts
 
-Un plugin n'agit qu'une fois installé. Dans `src/main.ts`, importez `createNotify`, créez le plugin et installez-le avant le routeur. Le plugin est gardé dans une constante : on s'en servira hors composant à la section 03.12.
+Un plugin n'agit qu'une fois installé. Dans `src/main.ts`, importez `createNotify`, créez le plugin et installez-le avant le routeur. Le plugin est gardé dans une constante : sa propriété `api` s'utilise hors composant.
 
 ```ts
 import { createNotify } from './plugins/notify'
@@ -441,13 +445,22 @@ import NotifyHost from '@/components/layout/NotifyHost.vue'
 </template>
 ```
 
-Enfin, faites parler l'ajout au panier. Dans `ProductCard.vue` et `ProductDetailPage.vue`, importez `useNotify` depuis `@/plugins/notify`, appelez `const notify = useNotify()` à côté de `const cart = …`, et ajoutez une ligne à la fin de la fonction `add`. Dans la carte (la fiche utilise `p.title` au lieu de `title`) :
+Enfin, faites parler l'ajout au panier. Dans `ProductCard.vue` et `ProductDetailPage.vue`, importez `useNotify` depuis `@/plugins/notify`, appelez `const notify = useNotify()` à côté de `const cart = …`, et ajoutez une ligne à la fin de la fonction `add`. Dans la carte :
 
 ```ts
 function add() {
   const { id, title, price, thumbnail } = props.product
   cart.add({ id, title, price, thumbnail })
   notify.notify(`${title} ajouté au panier`, 'success')
+}
+```
+
+Dans la fiche, la fonction `add` reçoit le produit `p` en paramètre :
+
+```ts
+function add(p: Product) {
+  cart.add({ id: p.id, title: p.title, price: p.price, thumbnail: p.thumbnail })
+  notify.notify(`${p.title} ajouté au panier`, 'success')
 }
 ```
 
@@ -500,20 +513,36 @@ Ouvrez `src/directives/countdown.ts`. La déclaration `GlobalDirectives` en bas 
 ```
 
 ```hint
-L'état d'un élément : `const states = new WeakMap<HTMLElement, { timer: …; ended: boolean }>()`. Dans `updated`, comparez `binding.oldValue?.endsAt` et `binding.value.endsAt`, puis les `offset`.
+L'état d'un élément : `const states = new WeakMap<HTMLElement, { timer: ReturnType<typeof setInterval> | undefined; ended: boolean }>()`. Dans `tick`, le temps restant se calcule à chaque tour avec `Date.now()`, et `onEnd` ne part que si l'état dit qu'il n'est pas déjà parti. Dans `updated`, comparez `binding.oldValue?.endsAt` et `binding.value.endsAt`, puis les `offset`.
 ```
 
-La solution complète est longue (une soixantaine de lignes) : elle est dans le kit, à ouvrir seulement en cas de blocage.
-
 ````solution
-Voir [`kit/solutions/03/src/directives/countdown.ts`](https://github.com/byte-layers/courses-vue-advanced/blob/main/kit/solutions/03/src/directives/countdown.ts). Le cœur de la directive :
-
 ```ts
+export function formatRemaining(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`
+}
+
+interface CountdownState {
+  timer: ReturnType<typeof setInterval> | undefined
+  ended: boolean
+}
+
 const states = new WeakMap<HTMLElement, CountdownState>()
+
+function stop(el: HTMLElement) {
+  const state = states.get(el)
+  if (state) clearInterval(state.timer)
+  states.delete(el)
+}
 
 function start(el: HTMLElement, value: CountdownValue) {
   stop(el)
-  const state: CountdownState = { timer: 0 as unknown as ReturnType<typeof setInterval>, ended: false }
+  const state: CountdownState = { timer: undefined, ended: false }
   const tick = () => {
     const remaining = value.endsAt - (Date.now() + (value.offset ?? 0))
     el.textContent = formatRemaining(remaining)
@@ -528,6 +557,21 @@ function start(el: HTMLElement, value: CountdownValue) {
   states.set(el, state)
   tick()
   if (!state.ended) state.timer = setInterval(tick, 1000)
+}
+
+export const vCountdown: Directive<HTMLElement, CountdownValue> = {
+  mounted(el, binding) {
+    start(el, binding.value)
+  },
+  updated(el, binding) {
+    const { endsAt, offset } = binding.value
+    const old = binding.oldValue
+    // On ne relance que si la cible change : pas à chaque rendu du parent.
+    if (!old || old.endsAt !== endsAt || old.offset !== offset) start(el, binding.value)
+  },
+  unmounted(el) {
+    stop(el)
+  },
 }
 ```
 ````
@@ -585,7 +629,7 @@ grep -q 'v-countdown' "$D/src/pages/HomePage.vue" || { echo "HomePage.vue n'util
 echo "La directive est enregistrée et utilisée sur l'accueil."
 ```
 
-Ouvrez `http://localhost:5173/home` : la page affiche `Vente flash, fin dans 09:59`, puis `09:58` une seconde plus tard. Passez sur une autre page et revenez : le décompte repart de dix minutes, parce que `flashEndsAt` est recalculé à chaque ouverture.
+Ouvrez la page `/home` : la page affiche `Vente flash, fin dans 09:59`, puis `09:58` une seconde plus tard. Passez sur une autre page et revenez : le décompte repart de dix minutes, parce que `flashEndsAt` est recalculé à chaque ouverture.
 
 ```acknowledge
 J'ai vu le compte à rebours descendre sur l'accueil
@@ -636,6 +680,8 @@ echo "La garde redirige vers la connexion et relit la session à chaque navigati
 
 Il reste à brancher la garde. Remplacez le contenu de `src/router/index.ts` : on ajoute les routes d'authentification et la garde globale, qui lit le store au moment de la navigation.
 
+Voici le fichier complet :
+
 ```ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { productRoutes } from '@/features/products/routes'
@@ -681,7 +727,7 @@ echo "La garde est branchée sur le routeur."
 
 ## 03.11 - Le client http : un seul renouvellement de jeton
 
-Les pages protégées appellent l'API avec un **jeton d'accès** (`Authorization: Bearer …`), valable un temps limité, et un **jeton de renouvellement** sert à en obtenir un nouveau. Quand le jeton d'accès expire, l'API répond `401`, et le client doit renouveler puis rejouer la requête, sans que l'utilisateur le voie. Ce comportement vit dans **un seul** client http, que toute l'application utilise : c'est ce que dit le `AGENTS.md` du projet.
+Les pages protégées appellent l'API avec un **jeton d'accès** (`Authorization: Bearer …`), valable un temps limité, et un **jeton de renouvellement** sert à en obtenir un nouveau. Quand le jeton d'accès expire, l'API répond `401`, et le client doit renouveler puis rejouer la requête, sans que l'utilisateur le voie. Ce comportement vit dans **un seul** client http, que toute l'application utilise : c'est la règle de l'application.
 
 Le piège est le parallélisme. Une page qui lance trois requêtes avec un jeton expiré reçoit trois `401` ; un client naïf lance alors trois renouvellements. Or un jeton de renouvellement ne sert souvent qu'une fois : le deuxième échoue, et l'utilisateur est déconnecté sans raison. La règle est donc : **un seul renouvellement à la fois**, auquel toutes les requêtes en échec s'accrochent, en partageant la même promesse.
 
@@ -784,24 +830,10 @@ export function searchProducts(q: string, signal?: AbortSignal) {
 }
 ```
 
-Le store d'authentification doit exister **dès le démarrage** : c'est en le créant que son `defineStore` branche la session au client http. On l'instancie donc dans `main.ts`, avec l'instance Pinia, et on dit quoi faire quand la session est perdue : prévenir avec le plugin de notifications (c'est là que sa propriété `api` sert, hors composant), puis renvoyer vers la connexion. Remplacez le contenu de `src/main.ts` par sa forme finale pour cette étape :
+Le store d'authentification doit exister **dès le démarrage** : c'est en le créant que son `defineStore` branche la session au client http. On l'instancie donc dans `main.ts`, avec l'instance Pinia, et on dit quoi faire quand la session est perdue : prévenir avec le plugin de notifications (c'est là que sa propriété `api` sert, hors composant), puis renvoyer vers la connexion. Dans `src/main.ts`, **ajoutez** l'import en haut et ce bloc juste avant `app.mount('#app')` :
 
 ```ts
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import App from './App.vue'
-import router from './router'
-import vuetify from './plugins/vuetify'
-import { createNotify } from './plugins/notify'
-import { vCountdown } from './directives/countdown'
 import { useAuthStore } from './features/auth/authStore'
-
-const app = createApp(App)
-const pinia = createPinia()
-const notify = createNotify()
-
-app.use(pinia).use(vuetify).use(notify).use(router)
-app.directive('countdown', vCountdown)
 
 // Session perdue (renouvellement impossible) : on prévient et on renvoie vers la connexion.
 useAuthStore(pinia).onSessionExpired(() => {
@@ -811,19 +843,14 @@ useAuthStore(pinia).onSessionExpired(() => {
     query: { redirect: router.currentRoute.value.fullPath },
   })
 })
-
-app.mount('#app')
 ```
 
-Enfin, l'en-tête doit proposer de se connecter, afficher l'utilisateur et permettre de se déconnecter. Remplacez le contenu de `src/components/layout/AppHeader.vue` :
+Enfin, l'en-tête doit proposer de se connecter, afficher l'utilisateur et permettre de se déconnecter. Dans `src/components/layout/AppHeader.vue`, **ajoutez** ces imports et ces lignes à la partie `<script setup>` :
 
-```vue
-<script setup lang="ts">
+```ts
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/authStore'
-import { useCartStore } from '@/features/cart/cartStore'
 
-const cart = useCartStore()
 const auth = useAuthStore()
 const router = useRouter()
 
@@ -831,36 +858,16 @@ async function logout() {
   auth.logout()
   await router.push({ name: 'home' })
 }
-</script>
+```
 
-<template>
-  <v-app-bar :elevation="2" data-testid="header">
-    <v-app-bar-title data-testid="header-title">Boutique Vue</v-app-bar-title>
-    <nav class="d-flex" aria-label="Navigation principale">
-      <v-btn variant="text" to="/home" data-testid="header-nav-home">Accueil</v-btn>
-      <v-btn variant="text" to="/products" data-testid="header-nav-products">Produits</v-btn>
-      <v-btn variant="text" to="/about" data-testid="header-nav-about">À propos</v-btn>
-    </nav>
-    <v-spacer />
-    <v-btn icon to="/cart" aria-label="Panier" data-testid="header-cart">
-      <v-icon>mdi-cart</v-icon>
-      <v-badge
-        v-if="cart.totalItems > 0"
-        :content="cart.totalItems"
-        color="primary"
-        floating
-        data-testid="header-cart-count"
-      />
-    </v-btn>
-    <template v-if="auth.isAuthenticated">
-      <v-btn variant="text" to="/account" data-testid="header-user">{{
-        auth.user?.firstName
-      }}</v-btn>
-      <v-btn variant="text" data-testid="header-logout" @click="logout">Déconnexion</v-btn>
-    </template>
-    <v-btn v-else variant="text" to="/login" data-testid="header-login">Connexion</v-btn>
-  </v-app-bar>
+et, dans le gabarit, juste après le `<v-btn icon to="/cart" …>…</v-btn>` du panier :
+
+```vue
+<template v-if="auth.isAuthenticated">
+  <v-btn variant="text" to="/account" data-testid="header-user">{{ auth.user?.firstName }}</v-btn>
+  <v-btn variant="text" data-testid="header-logout" @click="logout">Déconnexion</v-btn>
 </template>
+<v-btn v-else variant="text" to="/login" data-testid="header-login">Connexion</v-btn>
 ```
 
 Les nouveaux `data-testid` suivent la convention `zone-élément` du projet : `header-login`, `header-user` et `header-logout` pour l'en-tête, `login-*` et `account-*` pour les pages fournies, `notify` pour le message, `home-flash-countdown` pour le compte à rebours.
@@ -875,17 +882,19 @@ grep -q 'header-login' "$D/src/components/layout/AppHeader.vue" || { echo "AppHe
 echo "Le catalogue passe par le client unique, et la session est branchée."
 ```
 
-Vérifions dans le navigateur, le serveur de développement tournant toujours. Le compte de démonstration de DummyJSON est `emilys` avec le mot de passe `emilyspass`, prérempli sur la page de connexion.
+Vérifions dans le navigateur, le serveur de développement tournant toujours. Le repli hors ligne de la section 01.5 sert aussi ces routes d'authentification. Le compte de démonstration de DummyJSON est `emilys` avec le mot de passe `emilyspass`, prérempli sur la page de connexion.
 
-1. Ouvrez `http://localhost:5173/account` sans être connecté : le navigateur est redirigé vers `/login?redirect=/account`.
+1. Ouvrez la page `/account` sans être connecté : le navigateur est redirigé vers `/login?redirect=/account`.
 2. Cliquez sur « Se connecter » : vous revenez sur `/account`, qui affiche `Emily Johnson`. L'en-tête montre votre prénom et « Déconnexion ».
-3. Ouvrez les outils de développement, onglet Network, puis cliquez sur « Expirer le jeton (démo) » : le jeton d'accès devient invalide, et vous voyez `GET /auth/me` répondre `401`, puis `POST /auth/refresh` répondre `200`, puis `GET /auth/me` répondre `200`. La page n'a rien affiché de tout cela : le nom est toujours là.
+3. Ouvrez les outils de développement, onglet Network, puis, sur la page `/account`, cliquez sur « Expirer le jeton (démo) » : le jeton d'accès devient invalide, et vous voyez `GET /auth/me` répondre `401`, puis `POST /auth/refresh` répondre `200`, puis `GET /auth/me` répondre `200`. La page n'a rien affiché de tout cela : le nom est toujours là.
 4. Pour voir l'échec, ouvrez l'onglet Application, rubrique Local Storage, clé `shop.auth`, et changez la valeur de `refreshToken` en `x`, puis **rechargez la page** (le store ne relit le stockage qu'au démarrage) ; cliquez à nouveau sur « Expirer le jeton ». Le renouvellement est refusé (DummyJSON répond `403`), un message « Session expirée, reconnectez-vous. » s'affiche et vous êtes renvoyé vers `/login?redirect=/account`.
 
 ```acknowledge
 J'ai vu la connexion, le renouvellement discret du jeton, puis la session expirée
 ```
 
+> ⚠️ **Ce n'est pas un choix de production.** Le store garde les jetons dans `localStorage` pour que la démonstration survive à un rechargement, et vous venez d'en modifier un à la main : n'importe quel script de la page peut faire de même, et une faille XSS suffit à les voler. En production, le serveur pose le jeton de renouvellement dans un cookie `HttpOnly`, inaccessible au JavaScript.
+>
 > 📖 [DummyJSON : authentification](https://dummyjson.com/docs/auth)
 
 ## 03.13 - Tout vérifier d'un coup

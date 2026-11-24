@@ -304,3 +304,52 @@ describe('bots', () => {
     await srv.close()
   })
 })
+
+describe('gel du serveur (/control/stall)', () => {
+  it('met les enchères reçues en file, les traite dans l\'ordre avec leur ack à la fin, sans couper la connexion', async () => {
+    await post('/control/reset', { durationSeconds: 3600 })
+    const a = await client()
+    const b = await client()
+    await join(a, IPHONE)
+    await join(b, IPHONE)
+    const res = await post('/control/stall', { ms: 600 })
+    const { stalledUntil } = (await res.json()) as { stalledUntil: number }
+    assert.ok(stalledUntil > Date.now() && stalledUntil <= Date.now() + 600)
+
+    const t0 = Date.now()
+    const order: string[] = []
+    let disconnected = false
+    a.once('disconnect', () => (disconnected = true))
+    const seenByB: BidEvent[] = []
+    b.on('auction:bid', (e) => seenByB.push(e))
+    const first = bid(a, IPHONE, 500, 'alice').then((ack) => (order.push('alice'), ack))
+    const second = bid(a, IPHONE, 505, 'alice').then((ack) => (order.push('alice2'), ack))
+    await wait(250)
+    assert.deepEqual(order, [], 'aucun ack pendant le gel')
+    assert.equal(seenByB.length, 0, 'aucune diffusion pendant le gel')
+    const [ack1, ack2] = await Promise.all([first, second])
+    assert.ok(Date.now() - t0 >= 300, 'les acks arrivent après le délai')
+    assert.deepEqual(ack1, { ok: true, price: 500, version: 1 })
+    assert.deepEqual(ack2, { ok: true, price: 505, version: 2 })
+    assert.deepEqual(order, ['alice', 'alice2'])
+    await wait(50)
+    assert.deepEqual(seenByB.map((e) => e.price), [500, 505])
+    assert.equal(disconnected, false)
+    const state = (await (await fetch(server.url + '/control/state')).json()) as { auctions: AuctionState[] }
+    const auction = state.auctions.find((x) => x.productId === IPHONE)!
+    assert.equal(auction.price, 505)
+    assert.equal(auction.version, 2)
+    // le serveur est de nouveau normal
+    assert.deepEqual(await bid(b, IPHONE, 510, 'bob'), { ok: true, price: 510, version: 3 })
+  })
+
+  it('plafonne à 30 s et prend 8 s par défaut', async () => {
+    let r = (await (await post('/control/stall', { ms: 999999 })).json()) as { stalledUntil: number }
+    assert.ok(r.stalledUntil - Date.now() <= 30_000 && r.stalledUntil - Date.now() > 29_000)
+    r = (await (await post('/control/stall', {})).json()) as { stalledUntil: number }
+    const d = r.stalledUntil - Date.now()
+    assert.ok(d > 7000 && d <= 8000, `défaut ${d}`)
+    await post('/control/stall', { ms: 1 }) // raccourcit le gel
+    await wait(50)
+  })
+})

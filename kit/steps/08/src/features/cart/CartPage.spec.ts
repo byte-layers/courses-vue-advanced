@@ -13,5 +13,4 @@ describe('CartPage', () => {
   it.todo('« − » demande une unité de moins au store')
   it.todo('la corbeille retire LA ligne cliquée, pas une autre (remove)')
   it.todo('« Vider le panier » appelle clear()')
-  it.todo('« Passer commande » mène à /checkout')
 })

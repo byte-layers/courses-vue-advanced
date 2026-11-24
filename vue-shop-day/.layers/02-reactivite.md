@@ -3,15 +3,17 @@ title: "02 - La réactivité de l'intérieur"
 description: "Écrire soi-même le cœur de ref, computed, watchEffect et reactive, puis s'en servir : un customRef de recherche avec temporisation branché sur le catalogue, et les trois pièges classiques (destructuring, shallowRef, markRaw)."
 ---
 
-Vous utilisez `ref`, `computed` et `watch` tous les jours. Cette étape vous les fait réécrire en une soixantaine de lignes, pour que le comportement de Vue cesse d'être une règle à retenir et devienne une conséquence : pourquoi un `watchEffect` ne se relance que pour ce qu'il a lu, pourquoi un `computed` est paresseux, pourquoi `const { count } = state` casse tout. Vous ferez ensuite le chemin inverse : l'API publique de Vue (`customRef`, `shallowRef`, `markRaw`, `toRefs`) pour une vraie recherche dans le catalogue, et pour les trois pièges que le moteur explique.
+Vous utilisez `ref`, `computed` et `watchEffect` tous les jours. Cette étape vous les fait réécrire en une centaine de lignes, pour que le comportement de Vue cesse d'être une règle à retenir et devienne une conséquence : pourquoi un `watchEffect` ne se relance que pour ce qu'il a lu, pourquoi un `computed` est paresseux, pourquoi `const { count } = state` casse tout. Vous ferez ensuite le chemin inverse : l'API publique de Vue (`customRef`, `shallowRef`, `markRaw`, `toRefs`) pour une vraie recherche dans le catalogue, et pour les trois pièges que le moteur explique.
 
 > 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape précédente, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 01`. Le script écrase les fichiers de votre application : copiez ce que vous voulez garder avant.
+
+**Durée** : environ 50 min pour le cœur (sections 02.1 à 02.4, 02.6, 02.7 et 02.11), 20 min de plus si vous faites aussi les parties facultatives (02.5 et 02.8 à 02.10).
 
 Cette étape est un **objectif** : vous écrivez le code, des tests fournis le vérifient. Chaque exercice a ses critères, des indices qui s'ouvrent un par un, et une solution à ne regarder qu'en dernier recours.
 
 ## 02.1 - Ce que Vue fait quand vous lisez une donnée
 
-Une donnée réactive n'est pas observée en permanence : Vue **observe qui la lit**. Quand un effet (un rendu, un `watchEffect`, un `computed`) s'exécute, Vue le note comme **effet actif**. Chaque lecture d'une donnée réactive appelle alors `track(cible, clé)`, qui inscrit l'effet actif dans l'ensemble des abonnés de cette clé. Chaque écriture appelle `trigger(cible, clé)`, qui relance les abonnés. Tout le reste en découle.
+Une donnée réactive n'est pas observée en permanence : Vue **observe qui la lit**. Quand un effet (un rendu, un `watchEffect`, un `computed`) s'exécute, Vue le note comme **effet actif**. Chaque lecture d'une donnée réactive appelle alors `track(cible, clé)`, qui inscrit l'effet actif dans l'ensemble des abonnés de cette clé. Chaque écriture appelle `trigger(cible, clé)`, qui relance les abonnés. Tout le reste en découle. Le tableau fixe le vocabulaire utilisé dans toute l'étape.
 
 | Mot | Sens |
 |---|---|
@@ -29,13 +31,13 @@ Il y a deux manières de brancher `track` et `trigger` sur une donnée. Un `ref`
 
 ## 02.2 - Récupérer les squelettes et les tests
 
-Le kit fournit, pour cette étape, trois fichiers à compléter et leurs tests. Copiez-les dans votre application : les fichiers du kit gardent la même arborescence que `src/`, la commande les pose donc au bon endroit.
+Le kit fournit, pour cette étape, trois fichiers à compléter et leurs tests. Copiez-les dans votre application. Le dossier `kit/steps/02` contient déjà son propre dossier `src/` : la commande en copie le contenu à la racine de votre application, et chaque fichier tombe au bon endroit.
 
 ```exec
 cp -R ~/byte-layers/vue/course/kit/steps/02/. ~/byte-layers/vue/shop/
 ```
 
-Six fichiers apparaissent, trois squelettes (dont les fonctions jettent `new Error('À écrire')`) et leurs trois fichiers `.spec.ts`, qui sont les tests à rendre verts :
+Six fichiers apparaissent : trois squelettes, dont les fonctions jettent `new Error('À écrire')`, et leurs trois fichiers `.spec.ts`, qui sont les tests à rendre verts. Les trois squelettes sont :
 
 | Fichier | Rôle |
 |---|---|
@@ -55,7 +57,7 @@ echo "Les squelettes et leurs tests sont dans l'application."
 
 ## 02.3 - Écrire le suivi des dépendances, `miniRef` et `miniWatchEffect`
 
-Ouvrez `src/lib/mini-reactivity.ts`. Le fichier déclare déjà le type `Effect`, la variable `activeEffect` et le registre `targetMap`. Il vous reste six fonctions à écrire, dans l'ordre du fichier, chacune avec son `TODO` : `cleanup` (TODO 1), `createEffect` (2), `track` (3), `trigger` (4), `miniRef` (5) et `miniWatchEffect` (7). Laissez `miniComputed` et `miniReactive` pour les sections suivantes. Supprimez la première ligne du fichier, le commentaire `eslint-disable`, quand vous avez fini.
+Ouvrez `src/lib/mini-reactivity.ts`. Le fichier déclare déjà le type `Effect`, la variable `activeEffect` et le registre `targetMap`. Il vous reste six fonctions à écrire, dans l'ordre du fichier, chacune avec son `TODO` : `cleanup` (TODO 1), `createEffect` (2), `track` (3), `trigger` (4), `miniRef` (5) et `miniWatchEffect` (7). Laissez `miniComputed` et `miniReactive` pour les sections suivantes. La première ligne du fichier est un commentaire `eslint-disable` posé pour le squelette : vous pourrez la supprimer quand toutes les fonctions du fichier seront écrites.
 
 Trois idées guident l'écriture, dites avant le code parce que les tests les vérifient une à une.
 
@@ -71,14 +73,15 @@ Pour `miniRef`, ne relancez personne si la nouvelle valeur est identique à l'an
 - `miniRef` lit et écrit sa valeur, et ne notifie pas pour une valeur identique ;
 - `miniWatchEffect` s'exécute tout de suite, puis à chaque changement d'une donnée **lue**, et seulement celles-là ;
 - une branche abandonnée ne déclenche plus rien, et `stop()` désabonne tout ;
-- un effet qui écrit ce qu'il lit ne boucle pas, et un effet enfant ne vole pas les lectures de son parent.
+- un effet qui écrit ce qu'il lit ne boucle pas, et un effet enfant ne vole pas les lectures de son parent ;
+- un effet arrêté (`active` à faux) ne s'abonne plus : son `run()` exécute simplement la fonction.
 
 ```hint
 `cleanup` parcourt `effect.deps` (un tableau d'ensembles), retire l'effet de chacun, puis vide le tableau. `track` ajoute l'effet actif à l'ensemble de `(target, key)` **et** l'ensemble à `activeEffect.deps` : c'est ce qui permet à `cleanup` de retrouver ses abonnements.
 ```
 
 ```hint
-Dans `createEffect`, `run()` fait dans l'ordre : `cleanup(effect)`, mémoriser `activeEffect` dans une variable `previous`, poser `activeEffect = effect`, exécuter `fn()` dans un `try`, et dans le `finally` remettre `activeEffect = previous`. `miniRef` est un objet avec `get value()` qui appelle `track(ref, 'value')`, et `set value(next)` qui, si `!Object.is(next, current)`, mémorise puis appelle `trigger(ref, 'value')`.
+Dans `createEffect`, `run()` commence par `if (!effect.active) return fn()` (un effet arrêté ne s'abonne plus), puis fait dans l'ordre : `cleanup(effect)`, mémoriser `activeEffect` dans une variable `previous`, poser `activeEffect = effect`, exécuter `fn()` dans un `try`, et dans le `finally` remettre `activeEffect = previous`. `miniRef` est un objet avec `get value()` qui appelle `track(ref, 'value')`, et `set value(next)` qui, si `!Object.is(next, current)`, mémorise puis appelle `trigger(ref, 'value')`.
 ```
 
 ````solution
@@ -218,14 +221,16 @@ D=~/byte-layers/vue/shop
 echo "miniComputed est paresseux, mis en cache et chaînable."
 ```
 
-## 02.5 - Écrire `miniReactive`, la moitié Proxy
+## 02.5 - Facultatif : écrire `miniReactive`, la moitié Proxy
+
+Cette section est facultative (environ 8 min) : le rattrapage de l'étape suivante fournit le fichier complet, et le reste du lab n'en dépend pas.
 
 `ref` ne couvre qu'une valeur. Pour un objet entier, Vue enveloppe la cible dans un **Proxy** : un objet de remplacement dont le piège `get` est appelé à chaque lecture de propriété, et `set` à chaque écriture. C'est l'endroit naturel pour appeler `track` et `trigger`, avec la propriété comme clé. Deux détails font la différence entre un jouet et le vrai comportement :
 
 - la réactivité est **profonde et paresseuse** : si la valeur lue est un objet, `get` renvoie son proxy (créé à la demande), pour que `state.user.name = 'Grace'` déclenche aussi ;
 - il faut **un seul proxy par objet** : sans cache (`WeakMap<cible, proxy>`), deux lectures de `state.user` renverraient deux proxys différents et `state.user === state.user` serait faux.
 
-**À vous** : implémentez `miniReactive` (TODO 8), puis retirez la ligne `eslint-disable` en tête du fichier si ce n'est pas déjà fait. Appuyez-vous sur `Reflect.get` et `Reflect.set` plutôt que sur `obj[key]`, pour que `this` reste correct dans les accesseurs.
+**À vous** : implémentez `miniReactive` (TODO 8). Appuyez-vous sur `Reflect.get` et `Reflect.set` plutôt que sur `obj[key]`, pour que `this` reste correct dans les accesseurs.
 
 **Critères :** lire une propriété, y compris imbriquée, abonne l'effet actif ; écrire une propriété d'une valeur différente relance les abonnés de cette propriété seulement.
 
@@ -273,7 +278,7 @@ Le moteur vous a montré où Vue place `track` et `trigger`. `customRef` vous le
 Deux soins pour qu'il soit utilisable dans un composant :
 
 - une nouvelle écriture **annule** le minuteur précédent, sinon chaque frappe finirait par se déclencher ;
-- si le ref est créé dans un composant (ou un `effectScope`), un minuteur en attente ne doit pas survivre à sa destruction : `getCurrentScope()` dit si l'on est dans un scope, `onScopeDispose` enregistre un nettoyage.
+- si le ref est créé dans un composant (ou un `effectScope`), un minuteur en attente ne doit pas survivre à sa destruction. Un **scope** regroupe les effets, les `watch` et les nettoyages créés pendant son exécution, pour les arrêter d'un coup (`scope.stop()`) : chaque composant en a un. `getCurrentScope()` dit si l'on est dans un scope, `onScopeDispose(fn)` y enregistre un nettoyage. 📖 [`effectScope` et `onScopeDispose`](https://vuejs.org/api/reactivity-advanced.html#effectscope).
 
 **À vous** : complétez `src/composables/useDebouncedRef.ts`, qui renvoie un `Ref<T>` initialisé à `initial`, avec un délai par défaut de 300 ms.
 
@@ -326,7 +331,7 @@ D=~/byte-layers/vue/shop
 echo "useDebouncedRef pose la dernière valeur après le délai, et ne laisse aucun minuteur orphelin."
 ```
 
-📖 [`customRef`, `shallowRef`, `triggerRef`, `markRaw`](https://vuejs.org/api/reactivity-advanced.html), [`effectScope` et `onScopeDispose`](https://vuejs.org/api/reactivity-advanced.html#effectscope).
+📖 [`customRef`, `shallowRef`, `triggerRef`, `markRaw`](https://vuejs.org/api/reactivity-advanced.html).
 
 ## 02.7 - Brancher la recherche sur le catalogue
 
@@ -336,11 +341,38 @@ Il y a un piège, et c'est le même que celui du `get` de `useDebouncedRef`. Le 
 
 Une deuxième difficulté est propre au réseau : une requête lancée plus tôt peut répondre **après** une plus récente et l'écraser. Chaque appel à `searchProducts` accepte un `AbortSignal` : on garde l'`AbortController` de la requête en cours, on l'annule avant d'en lancer une autre, et on ignore l'erreur d'annulation.
 
-**À vous** : dans `src/features/products/pages/ProductListPage.vue`, ajoutez la recherche. Les gestes sont les suivants :
+Ouvrez `src/features/products/pages/ProductListPage.vue` dans votre éditeur. Voici son script actuel : il charge la liste une fois au montage, sans annulation.
+
+```vue
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { listProducts } from '@/api/products'
+import type { Product } from '../types'
+import ProductCard from '../components/ProductCard.vue'
+
+const products = ref<Product[]>([])
+const loading = ref(true)
+const error = ref<string | null>(null)
+
+onMounted(async () => {
+  try {
+    products.value = (await listProducts()).products
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+```
+
+Les deux fonctions d'accès, dans `src/api/products.ts`, acceptent chacune un signal d'annulation en dernier argument : `listProducts(params: { limit?: number; skip?: number } = {}, signal?: AbortSignal)` (premier argument : un objet, `{}` pour les valeurs par défaut) et `searchProducts(q: string, signal?: AbortSignal)`. Le gabarit teste d'abord `loading`, puis `error`, puis affiche la liste : l'état vide s'insère entre l'erreur et la liste, et ne s'affiche donc jamais pendant le chargement.
+
+**À vous** : dans ce fichier, ajoutez la recherche. Les gestes sont les suivants :
 
 1. importez `useDebouncedRef` depuis `@/composables/useDebouncedRef` et `searchProducts` depuis `@/api/products`, à côté de `listProducts` ;
 2. déclarez `draft = ref('')` et `query = useDebouncedRef('', 300)` ;
-3. remplacez le chargement du `onMounted` par une fonction `load()` qui choisit `searchProducts(q)` quand `query` est non vide et `listProducts()` sinon, avec un `AbortController` ; lancez-la au montage et à chaque changement de `query` (`watch`) ;
+3. remplacez le chargement du `onMounted` par une fonction `load()` qui choisit `searchProducts(q, signal)` quand `query` est non vide et `listProducts({}, signal)` sinon, avec un `AbortController` ; lancez-la au montage et à chaque changement de `query` (`watch`) ;
 4. ajoutez au gabarit, au-dessus de la liste, un `<v-text-field>` de label « Rechercher un produit », avec `data-testid="product-search"`, lié à `draft` ; chaque saisie met à jour `draft` **et** `query` ;
 5. ajoutez un état vide : une `<v-alert>` avec `data-testid="product-list-empty"`, affichée quand la requête a réussi sans produit.
 
@@ -349,6 +381,7 @@ Les `data-testid` suivent la convention de l'étape 01 : `product-search` pour l
 **Critères :**
 - la page lit `useDebouncedRef` et appelle `searchProducts` ;
 - le champ est retrouvable par son label et par `data-testid="product-search"` ;
+- une rafale de frappes ne lance qu'une seule requête de recherche, 300 ms après la dernière, et le champ garde le texte tapé ;
 - l'état vide a `data-testid="product-list-empty"` ;
 - le projet passe `npm run type-check` et ESLint.
 
@@ -413,22 +446,60 @@ onScopeDispose(() => controller?.abort())
 Dans le gabarit, le champ est `<v-text-field :model-value="draft" label="Rechercher un produit" type="search" clearable hide-details data-testid="product-search" @update:model-value="onInput" />`, et l'état vide un `<v-alert v-else-if="products.length === 0" data-testid="product-list-empty">`, placé entre l'alerte d'erreur et la liste.
 ````
 
-Vérifiez à la main que la temporisation joue son rôle : avec `npm run dev` lancé, ouvrez la page Produits, l'onglet **Réseau** des outils du navigateur, et tapez `phone` rapidement dans le champ. Une seule requête `search?q=phone` doit partir, 300 ms après la dernière frappe, et non cinq. Videz le champ : la liste complète revient.
+Vous pouvez aussi vérifier à la main que la temporisation joue son rôle : avec `npm run dev` lancé, ouvrez la page Produits, l'onglet **Réseau** des outils du navigateur, et tapez `phone` rapidement dans le champ. Une seule requête `search?q=phone` doit partir, 300 ms après la dernière frappe, et non cinq.
+
+Le bloc ci-dessous contrôle ce comportement pour de vrai. Il écrit un test jetable qui monte la page, simule cinq frappes espacées de 80 ms avec un faux `fetch`, compte les requêtes de recherche, puis supprime ce test. Il accepte toute écriture qui produit ce comportement.
 
 ```verify
 D=~/byte-layers/vue/shop
 P="$D/src/features/products/pages/ProductListPage.vue"
-grep -q 'useDebouncedRef' "$P" || { echo "ProductListPage.vue n'utilise pas useDebouncedRef : importez-le et créez le ref temporisé (gestes 1 et 2 de la section 02.7)."; exit 1; }
-grep -q 'searchProducts' "$P" || { echo "ProductListPage.vue n'appelle pas searchProducts : la recherche doit l'utiliser quand le champ est rempli."; exit 1; }
-grep -q 'data-testid="product-search"' "$P" || { echo "Le champ de recherche n'a pas data-testid=\"product-search\"."; exit 1; }
-grep -q 'data-testid="product-list-empty"' "$P" || { echo "L'état vide n'a pas data-testid=\"product-list-empty\"."; exit 1; }
-grep -q 'Rechercher un produit' "$P" || { echo "Le champ n'a pas le label « Rechercher un produit »."; exit 1; }
+T="$D/src/features/products/pages/zz-verify.spec.ts"
+grep -qE "data-testid=[\"']product-search[\"']" "$P" || { echo "Le champ de recherche n'a pas data-testid=\"product-search\"."; exit 1; }
+grep -qE "data-testid=[\"']product-list-empty[\"']" "$P" || { echo "L'état vide n'a pas data-testid=\"product-list-empty\"."; exit 1; }
+cat > "$T" <<'EOF'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import vuetify from '@/plugins/vuetify'
+import ProductListPage from './ProductListPage.vue'
+
+const reply = (q: string) => ({ products: q ? [{ id: 1, title: q, price: 1, thumbnail: '' }] : [], total: 0, skip: 0, limit: 12 })
+
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => ({ ok: true, json: async () => reply(new URL(url).searchParams.get('q') ?? '') })))
+})
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
+
+it('une seule requête de recherche pour une rafale de frappes', async () => {
+  const wrapper = mount(ProductListPage, { global: { plugins: [vuetify], stubs: { ProductCard: true } } })
+  await flushPromises()
+  const input = wrapper.find('input')
+  for (const text of ['p', 'ph', 'pho', 'phon', 'phone']) {
+    await input.setValue(text)
+    vi.advanceTimersByTime(80)
+  }
+  vi.advanceTimersByTime(400)
+  await flushPromises()
+  const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]))
+  expect(calls.filter((u) => u.includes('/products/search'))).toHaveLength(1)
+  expect(calls.some((u) => u.includes('q=phone'))).toBe(true)
+  expect((input.element as HTMLInputElement).value).toBe('phone')
+})
+EOF
+(cd "$D" && npx vitest run src/features/products/pages/zz-verify.spec.ts >/dev/null 2>&1); R=$?
+rm -f "$T"
+[ $R -eq 0 ] || { echo "La recherche ne se comporte pas comme attendu : cinq frappes rapides doivent donner une seule requête « search?q=phone », et le champ doit garder le texte tapé. Relisez les gestes 2 à 4 de la section 02.7 (draft, query temporisée, watch sur query)."; exit 1; }
 (cd "$D" && npm run type-check >/dev/null 2>&1) || { echo "npm run type-check échoue : lancez-le dans $D et lisez la première erreur."; exit 1; }
 (cd "$D" && npx eslint src/features/products >/dev/null 2>&1) || { echo "ESLint signale des erreurs : lancez npx eslint src/features/products dans $D."; exit 1; }
-echo "Le catalogue a sa recherche temporisée, son état vide, et le projet compile."
+echo "Une rafale de frappes ne lance qu'une requête de recherche, les data-testid sont posés, et le projet compile."
 ```
 
-## 02.8 - Piège 1 : le destructuring d'un objet réactif
+## 02.8 - Facultatif : piège 1, le destructuring d'un objet réactif
+
+Cette section et les deux suivantes sont facultatives (environ 4 min chacune) : le rattrapage de l'étape suivante fournit le fichier.
 
 Le moteur explique pourquoi ce code ne marche pas :
 
@@ -470,7 +541,7 @@ echo "useCounterState reste réactif une fois destructuré."
 
 📖 [`toRefs`](https://vuejs.org/api/reactivity-utilities.html#torefs).
 
-## 02.9 - Piège 2 : une grande liste qu'on ne veut pas rendre profonde
+## 02.9 - Facultatif : piège 2, une grande liste qu'on ne veut pas rendre profonde
 
 `ref` et `reactive` sont **profonds** : chaque objet imbriqué est enveloppé dans un proxy, à la première lecture. C'est pratique, et inutile pour une grande liste de données qu'on ne modifie jamais en place (les résultats d'une API, un historique). Chaque élément lu paie alors un proxy et un abonnement pour rien. `shallowRef` ne suit que le **remplacement** de `.value` : les éléments ne sont pas proxifiés.
 
@@ -507,7 +578,7 @@ D=~/byte-layers/vue/shop
 echo "useRawList notifie au remplacement, et sur refresh() après une mutation en place."
 ```
 
-## 02.10 - Piège 3 : un objet qu'il ne faut pas proxifier
+## 02.10 - Facultatif : piège 3, un objet qu'il ne faut pas proxifier
 
 Certains objets n'ont rien à faire dans un proxy : une instance de bibliothèque (un graphique, une carte, une connexion) a des champs privés, une identité qu'on compare par `===`, ou un état interne que Vue n'a pas à surveiller. Rangé dans un `reactive`, un objet devient un proxy : `state.engine !== engine`, et des méthodes qui reposent sur des champs privés peuvent échouer. `markRaw(objet)` marque l'objet : Vue ne l'enveloppera **jamais**, où qu'il soit rangé. L'étape 05 s'en servira pour le client temps réel.
 
@@ -538,14 +609,15 @@ echo "Les trois pièges sont couverts, et plus aucune fonction n'est à écrire.
 
 ## 02.11 - Toute la suite de tests
 
-Pour finir, lancez toute la suite avec `npm test` dans `~/byte-layers/vue/shop` : les tests du starter (le panier) et ceux de l'étape ensemble. Vitest doit annoncer `Tests  24 passed (24)` : 2 pour le panier, 13 pour le moteur, 5 pour `useDebouncedRef`, 4 pour les pièges. Le bloc ci-dessous fait ce contrôle, avec la vérification de types et ESLint.
+Pour finir, lancez la suite avec `npm test -- --run` dans `~/byte-layers/vue/shop` (une seule passe, pas de mode interactif) : les tests du starter (le panier) et ceux de l'étape. Vitest doit annoncer 2 tests pour le panier, 10 pour le moteur (13 avec `miniReactive`), 5 pour `useDebouncedRef`, et 4 de plus si vous avez fait les trois pièges. Le bloc ci-dessous contrôle le cœur de l'étape, avec la vérification de types et ESLint.
 
 ```verify
 D=~/byte-layers/vue/shop
-(cd "$D" && npm test >/dev/null 2>&1) || { echo "Des tests échouent : lancez npm test dans $D, lisez le premier fichier rouge et reprenez la section correspondante."; exit 1; }
+(cd "$D" && npx vitest run src/features src/composables >/dev/null 2>&1) || { echo "Des tests du panier ou de useDebouncedRef échouent : lancez npx vitest run src/features src/composables dans $D et lisez le premier fichier rouge."; exit 1; }
+(cd "$D" && npx vitest run src/lib/mini-reactivity.spec.ts -t 'miniRef|miniWatchEffect|miniComputed' >/dev/null 2>&1) || { echo "Des tests du moteur échouent : reprenez les sections 02.3 et 02.4."; exit 1; }
 (cd "$D" && npm run type-check >/dev/null 2>&1) || { echo "npm run type-check échoue : lancez-le dans $D et lisez la première erreur."; exit 1; }
 (cd "$D" && npm run lint >/dev/null 2>&1) || { echo "npm run lint échoue : lancez-le dans $D et corrigez les erreurs signalées."; exit 1; }
-echo "Les 24 tests, la vérification de types et ESLint passent."
+echo "Le moteur, la recherche temporisée, le panier, la vérification de types et ESLint passent."
 ```
 
 ## Récap
