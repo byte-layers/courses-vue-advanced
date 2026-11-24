@@ -1,0 +1,7 @@
+{
+  // Utilisé par les tests de types (*.test-d.ts) : le même programme que l'application, test-d inclus.
+  "extends": "./tsconfig.app.json",
+  "include": ["env.d.ts", "src/**/*"],
+  "exclude": [],
+  "compilerOptions": { "noEmit": true, "composite": false, "incremental": false, "tsBuildInfoFile": null }
+}

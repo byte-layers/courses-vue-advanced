@@ -1,0 +1,2 @@
+# Fichiers de test MIS À JOUR (ils existaient déjà) : verts dès le départ, ils doivent rester verts.
+src/features/auctions/pages/AuctionsPage.spec.ts
