@@ -13,7 +13,7 @@ Un point d'honnêteté sur cette étape : **ce qu'on mesure ici, c'est un nombre
 
 ## 07.1 - Support : le serveur en ticker rapide et les fichiers fournis
 
-Cette section est un **support** : chaque geste est une commande. Cette étape fait tourner deux processus longs et lance des commandes à côté : ouvrez **trois terminaux**, que ce texte appelle « serveur » (port 4310), « application » (port 5173) et « commandes » (tout le reste). Le serveur du lab sait jouer un **ticker rapide** : dix mises par seconde, de 0,01 € chacune, sur l'enchère de l'iPhone. C'est la charge de toute l'étape. Dans le terminal « serveur », arrêtez celui de l'étape 05 s'il tourne encore (`Ctrl+C`), puis relancez-le dans ce mode (ses paquets sont déjà installés depuis l'étape 05) :
+Cette section est un **support** : chaque geste est une commande. Cette étape fait tourner deux processus longs et lance des commandes à côté : ouvrez **trois terminaux**, que ce texte appelle « Serveur » (port 4310), « Application » (port 5173) et « Commandes » (tout le reste). Le serveur du lab sait jouer un **ticker rapide** : dix mises par seconde, de 0,01 € chacune, sur l'enchère de l'iPhone. C'est la charge de toute l'étape. Dans le terminal « Serveur », arrêtez celui de l'étape 05 s'il tourne encore (`Ctrl+C`), puis relancez-le dans ce mode (ses paquets sont déjà installés depuis l'étape 05) :
 
 ```exec
 label: "Serveur d'enchères, ticker rapide (laisser tourner)"
@@ -23,7 +23,7 @@ cd ~/byte-layers/vue/course/kit/server && npm run start:fast
 
 Le terminal affiche `ticker rapide 10/s`. Les bots ordinaires restent actifs : ils surenchérissent aussi sur les quatre autres enchères, toutes les quatre secondes. Pour un ticker pur, relancez le serveur avec `BOT_INTERVAL_MS=60000 npm run start:fast` (un bot ordinaire par minute) ; ce n'est pas nécessaire ici.
 
-Copiez ensuite les fichiers fournis, depuis le terminal « commandes ». **Lisez d'abord ce tableau : cinq fichiers de votre application sont remplacés**, pour que tout le monde parte du même état mesurable, celui de l'étape 06 avec ses compteurs.
+Copiez ensuite les fichiers fournis, depuis le terminal « Commandes ». **Lisez d'abord ce tableau : cinq fichiers de votre application sont remplacés**, pour que tout le monde parte du même état mesurable, celui de l'étape 06 avec ses compteurs.
 
 ```exec
 cp -R ~/byte-layers/vue/course/kit/steps/07/src/. ~/byte-layers/vue/shop/src/
@@ -41,7 +41,7 @@ cp -R ~/byte-layers/vue/course/kit/steps/07/src/. ~/byte-layers/vue/shop/src/
 
 Si vous aviez ajouté vos propres retouches à l'un des fichiers remplacés, reportez-les après coup : le kit ne peut pas deviner.
 
-L'application doit tourner pour la suite. Si `npm run dev` tourne encore depuis l'étape 06 dans le terminal « application », laissez-le : Vite recharge à chaud. Sinon, lancez-le dans ce terminal :
+L'application doit tourner pour la suite. Si `npm run dev` tourne encore depuis l'étape 06 dans le terminal « Application », laissez-le : Vite recharge à chaud. Sinon, lancez-le dans ce terminal :
 
 ```exec
 label: "Application (laisser tourner)"
@@ -359,7 +359,7 @@ grep -qE "^import AuctionModal" "$F" && { echo "Supprimez l'import statique de A
 echo "La modale est un composant asynchrone : son code n'est chargé qu'à la première ouverture."
 ```
 
-Le résultat se voit dans la construction de production : lancez-la dans le terminal « commandes » et cherchez, dans sa sortie (la liste des fichiers de `dist/assets/`), un fichier `AuctionModal-….js` à part, d'environ 7 ko sur la machine du lab (la taille dépend de ce que la modale importe).
+Le résultat se voit dans la construction de production : lancez-la dans le terminal « Commandes » et cherchez, dans sa sortie (la liste des fichiers de `dist/assets/`), un fichier `AuctionModal-….js` à part, d'environ 7 ko sur la machine du lab (la taille dépend de ce que la modale importe).
 
 ```exec
 cd ~/byte-layers/vue/shop && npm run build
@@ -421,7 +421,7 @@ J'ai retrouvé la page 2 et ma recherche en revenant sur le catalogue
 
 ## 07.8 - Tout vérifier d'un coup
 
-Avant de passer aux tests, il faut que les trois commandes de qualité du projet passent : `npm run type-check`, `npm run lint` et `npm test` (toute la suite, soit 201 tests, dont 9 nouveaux à cette étape). Le bouton ci-dessous les lance pour vous, dans cet ordre, et s'arrête au premier échec.
+Avant de passer aux tests, il faut que les trois commandes de qualité du projet passent : `npm run type-check`, `npm run lint` et `npm test` (toute la suite : 202 tests avec l'option checkout de l'étape 06, 189 sans elle, dont 9 nouveaux à cette étape). Le bouton ci-dessous les lance pour vous, dans cet ordre, et s'arrête au premier échec.
 
 ```verify
 D=~/byte-layers/vue/shop

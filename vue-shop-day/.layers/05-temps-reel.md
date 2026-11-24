@@ -42,13 +42,13 @@ Installez ensuite le client socket.io, qui est la seule nouvelle dépendance de 
 cd ~/byte-layers/vue/shop && npm install -E socket.io-client@4.8.4
 ```
 
-Le serveur d'enchères a ses propres dépendances, dans `kit/server`. Elles ont été installées à la section 01.5 : la commande suivante ne fait alors que le constater, et elle est nécessaire si vous êtes arrivé ici par un rattrapage.
+Le serveur d'enchères a ses propres dépendances, dans `kit/server`. Elles ont été installées à la section 01.4 : la commande suivante ne fait alors que le constater, et elle est nécessaire si vous êtes arrivé ici par un rattrapage.
 
 ```exec
 cd ~/byte-layers/vue/course/kit/server && npm install
 ```
 
-Il reste à lancer le serveur d'enchères. C'est le **même serveur** qu'à la section 01.5 (« Serveur du lab »), qui sert ici ses enchères. S'il tourne encore, arrêtez-le d'abord avec `Ctrl+C` dans son terminal : un seul serveur doit écouter sur le port 4310. On le relance, dans le terminal **Serveur**, **sans bots**, c'est-à-dire sans les enchérisseurs automatiques qui, par défaut, misent seuls toutes les 4 secondes. Vos essais seront ainsi lisibles : le prix ne bouge que quand vous (ou un `curl` du terminal Commandes) le décidez.
+Il reste à lancer le serveur d'enchères. C'est le **même serveur** qu'à la section 01.4 (« Serveur du lab »), qui sert ici ses enchères. S'il tourne encore, arrêtez-le d'abord avec `Ctrl+C` dans son terminal : un seul serveur doit écouter sur le port 4310. On le relance, dans le terminal **Serveur**, **sans bots**, c'est-à-dire sans les enchérisseurs automatiques qui, par défaut, misent seuls toutes les 4 secondes. Vos essais seront ainsi lisibles : le prix ne bouge que quand vous (ou un `curl` du terminal Commandes) le décidez.
 
 ```exec
 label: "Serveur d'enchères (laisser tourner)"
@@ -405,18 +405,18 @@ echo "L'offre est optimiste, envoie la version vue, et ne revient en arrière qu
 
 Retournez dans le navigateur, sur `/auctions`. L'iPhone est à 600 € depuis la section 05.5 (le bot a misé avant l'ouverture de la fenêtre : l'historique des offres de cette fenêtre commencera donc vide, elle ne montre que les offres reçues depuis son ouverture). Cliquez sur « Enchérir » sur la carte de l'iPhone : une fenêtre s'ouvre, avec le prix, le compte à rebours, un champ « Votre nom », un champ d'offre prérempli à l'offre minimale (le prix courant plus 5 €, soit 605 €) et la liste des dernières offres, vide. Cliquez sur le bouton « Enchérir » de la fenêtre : le prix passe à 605 €, vous êtes « En tête : invité » et la liste compte une ligne.
 
-Un essai instructif montre qu'un **délai dépassé n'est pas un refus**. Le serveur sait se geler : il cesse de traiter les messages et de diffuser, sans couper les connexions, puis traite à la fin tout ce qu'il a reçu, dans l'ordre. Le gel dure ici 8 secondes, plus que le délai de 5 secondes de `useBid`. Procédez dans cet ordre :
+Un essai instructif montre qu'un **délai dépassé n'est pas un refus**. Le serveur sait se geler : il cesse de traiter les messages et de diffuser, sans couper les connexions, puis traite à la fin tout ce qu'il a reçu, dans l'ordre. Le gel dure ici 15 secondes, bien plus que le délai de 5 secondes de `useBid`, qui court **depuis votre clic**. Procédez dans cet ordre :
 
-1. Dans la fenêtre de l'iPhone, laissez l'offre à 610 € (le minimum, après votre mise à 605 €).
-2. Dans le terminal **Commandes**, lancez le gel, puis passez **tout de suite** dans le navigateur (vous avez 5 secondes avant que la mise ne soit abandonnée).
+1. Dans la fenêtre de l'iPhone, vérifiez que le champ d'offre affiche 610 (le minimum, après votre mise à 605 €) ; sinon saisissez-le.
+2. Dans le terminal **Commandes**, lancez le gel, puis repassez dans le navigateur.
 
 ```exec
-curl -X POST localhost:4310/control/stall -H 'Content-Type: application/json' -d '{"ms":8000}'
+curl -X POST localhost:4310/control/stall -H 'Content-Type: application/json' -d '{"ms":15000}'
 ```
 
-3. Cliquez sur « Enchérir » dans la fenêtre : le prix monte **tout de suite** à 610 € (c'est la partie optimiste).
-4. Cinq secondes plus tard, il redescend à 605 € et l'erreur « Le serveur n’a pas répondu à temps. » s'affiche : c'est l'annulation.
-5. Trois secondes de plus, au bout du gel : le serveur traite la mise qu'il avait reçue et la diffuse. Le prix **remonte** à 610 € avec l'événement `auction:bid`.
+3. **Cliquez dans les 8 secondes** sur « Enchérir » dans la fenêtre : le prix monte **tout de suite** à 610 € (c'est la partie optimiste).
+4. Cinq secondes après le clic, le prix redescend à 605 € et l'erreur « Le serveur n’a pas répondu à temps. » s'affiche : c'est l'annulation.
+5. Le gel se termine ensuite (15 secondes après la commande) : le serveur traite la mise qu'il avait reçue et la diffuse. Le prix **remonte** à 610 € avec l'événement `auction:bid`.
 
 Le client avait renoncé, mais le serveur avait fait son travail : l'événement du serveur a le dernier mot, et c'est pour cela que le cache se recale sur lui et non sur ce que le client croit. (Le serveur reste d'ailleurs joignable pendant le gel : aucune connexion n'est coupée.)
 
@@ -439,7 +439,7 @@ curl -X POST localhost:4310/control/bot-bid -H 'Content-Type: application/json' 
 La fenêtre se met à jour toute seule : le prix passe à 900 €, le bot est en tête, une ligne s'ajoute à l'historique, et sous le prix apparaît **« Vous êtes surenchéri : » suivi du bot et de 900,00 €**. Dans l'onglet Elements des outils de développement, repérez la `div` `role="status"` : c'est elle que lirait un lecteur d'écran. (Sur macOS, `Cmd+F5` active VoiceOver pour l'entendre.) Fermez la fenêtre avec le bouton « Fermer ».
 
 ```acknowledge
-J'ai vu la mise redescendre après cinq secondes puis remonter à la fin du gel, et l'annonce « Vous êtes surenchéri » après la mise du bot
+J'ai vu la mise redescendre cinq secondes après le clic puis remonter à la fin du gel, et l'annonce « Vous êtes surenchéri » après la mise du bot
 ```
 
 Les sept tests de la page rassemblent tout ce que vous avez écrit, avec un faux socket : chargement, prix mis à jour, compte à rebours corrigé, offre optimiste puis refusée, annonce.

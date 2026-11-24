@@ -7,7 +7,7 @@ Vous utilisez `ref`, `computed` et `watchEffect` tous les jours. Cette étape vo
 
 > 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape précédente, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 01`. Le script écrase les fichiers de votre application : copiez ce que vous voulez garder avant.
 
-**Durée** : environ 50 min pour le cœur (sections 02.1 à 02.4, 02.6, 02.7 et 02.11), 20 min de plus si vous faites aussi les parties facultatives (02.5 et 02.8 à 02.10).
+**Durée** : environ 60 min pour le cœur (sections 02.1 à 02.4, 02.6, 02.7 et 02.11), 20 min de plus si vous faites aussi les parties facultatives (02.5 et 02.8 à 02.10). Si vous sautez les parties facultatives, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 02` au début de l'étape 03 : sans cela, la suite de tests complète reste rouge sur les exercices sautés.
 
 Cette étape est un **objectif** : vous écrivez le code, des tests fournis le vérifient. Chaque exercice a ses critères, des indices qui s'ouvrent un par un, et une solution à ne regarder qu'en dernier recours.
 
@@ -25,7 +25,7 @@ Une donnée réactive n'est pas observée en permanence : Vue **observe qui la l
 
 Le registre est une structure à trois niveaux : `WeakMap<cible, Map<clé, Set<effet>>>`. La `WeakMap` laisse le ramasse-miettes libérer une cible que plus personne ne référence. La version de Vue 3.5 organise ces abonnements avec des listes chaînées et des compteurs de version, pour aller plus vite et consommer moins de mémoire ; le principe est celui-ci.
 
-Il y a deux manières de brancher `track` et `trigger` sur une donnée. Un `ref` est une petite boîte avec un accesseur `get value` / `set value` qui les appelle. `reactive` enveloppe un objet entier dans un **Proxy** dont les pièges `get` et `set` les appellent pour n'importe quelle propriété. Vous écrirez les deux, plus `computed`, qui est un effet particulier : il ne s'exécute pas tout seul mais à la lecture, et se contente de se marquer « sale » quand une dépendance change.
+Il y a deux manières de brancher `track` et `trigger` sur une donnée. Un `ref` est une petite boîte avec un accesseur `get value` / `set value` qui les appelle. `reactive` enveloppe un objet entier dans un **Proxy** dont les pièges `get` et `set` les appellent pour n'importe quelle propriété. Vous écrirez `ref` et `computed` (et, en option, `reactive`), qui est un effet particulier : il ne s'exécute pas tout seul mais à la lecture, et se contente de se marquer « sale » quand une dépendance change.
 
 📖 [La réactivité en détail](https://vuejs.org/guide/extras/reactivity-in-depth.html).
 
@@ -223,7 +223,7 @@ echo "miniComputed est paresseux, mis en cache et chaînable."
 
 ## 02.5 - Facultatif : écrire `miniReactive`, la moitié Proxy
 
-Cette section est facultative (environ 8 min) : le rattrapage de l'étape suivante fournit le fichier complet, et le reste du lab n'en dépend pas.
+Cette section est facultative (environ 8 min) : le rattrapage `catch-up.sh 02`, à lancer au début de l'étape 03 si vous la sautez, fournit le fichier complet, et le reste du lab n'en dépend pas.
 
 `ref` ne couvre qu'une valeur. Pour un objet entier, Vue enveloppe la cible dans un **Proxy** : un objet de remplacement dont le piège `get` est appelé à chaque lecture de propriété, et `set` à chaque écriture. C'est l'endroit naturel pour appeler `track` et `trigger`, avec la propriété comme clé. Deux détails font la différence entre un jouet et le vrai comportement :
 
@@ -499,7 +499,7 @@ echo "Une rafale de frappes ne lance qu'une requête de recherche, les data-test
 
 ## 02.8 - Facultatif : piège 1, le destructuring d'un objet réactif
 
-Cette section et les deux suivantes sont facultatives (environ 4 min chacune) : le rattrapage de l'étape suivante fournit le fichier.
+Cette section et les deux suivantes sont facultatives (environ 4 min chacune) : si vous les sautez, `catch-up.sh 02` (au début de l'étape 03) fournit le fichier.
 
 Le moteur explique pourquoi ce code ne marche pas :
 
@@ -625,6 +625,6 @@ echo "Le moteur, la recherche temporisée, le panier, la vérification de types 
 - Vous avez écrit le cœur de la réactivité : un **effet actif**, `track` à la lecture, `trigger` à l'écriture, des dépendances recalculées à chaque exécution, des effets imbriqués, aucune boucle.
 - `ref` est un accesseur, `reactive` un Proxy, `computed` un effet à scheduler : paresseux et mis en cache parce qu'il se contente de se marquer sale.
 - `customRef` vous donne `track` et `trigger` : le catalogue a une recherche temporisée (`draft` pour la frappe, `query` pour la requête), avec annulation des requêtes en retard.
-- Trois pièges, trois outils : `toRefs` pour le destructuring, `shallowRef` (et `triggerRef`) pour les grandes données non profondes, `markRaw` pour les objets qu'on ne proxifie pas.
+- Facultatif : trois pièges, trois outils : `toRefs` pour le destructuring, `shallowRef` (et `triggerRef`) pour les grandes données non profondes, `markRaw` pour les objets qu'on ne proxifie pas.
 
 Dans l'étape suivante, vous passerez du moteur aux **motifs d'assemblage** : le panier passe de Provide/Inject à un composable puis à un store Pinia, avec une clé d'injection typée, une persistance, un plugin, une directive et l'authentification. L'étape 04 remplacera le chargement à la main de `ProductListPage` par TanStack Query, en réutilisant le `customRef` de cette étape pour la recherche.

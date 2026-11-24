@@ -9,7 +9,7 @@ Vous allez passer la journée sur une même application : une boutique Vue 3 bra
 
 **Durée** : environ 25 min.
 
-Cette étape est un **support** : chaque geste est un bloc `exec` que le bouton ▶ lance, et vous pouvez la jouer sans tout comprendre avant de lire la visite. Elle n'a ni exercice ni solution, donc pas d'état de rattrapage : si quelque chose se passe mal, relancez le bloc concerné.
+Cette étape est un **support** : chaque geste est un bloc `exec` que le bouton ▶ lance, et vous pouvez la jouer sans tout comprendre avant de lire la visite. Elle n'a ni exercice ni solution : si quelque chose se passe mal, relancez le bloc concerné. Son état de rattrapage (`sh ~/byte-layers/vue/course/kit/catch-up.sh 01`) recopie simplement le starter dans `shop`.
 
 **Ce qu'il faut** :
 

@@ -11,7 +11,7 @@ Le catalogue charge ses produits avec `onMounted` et un `fetch` : pas de cache, 
 
 ## 04.1 - Support : copier les fichiers fournis et installer les paquets
 
-Cette section est un **support** : chaque geste est une commande. Copiez d'abord les fichiers fournis dans l'application. Trois d'entre eux (la liste, la carte et la fiche d'un produit) **remplacent** ceux de l'étape 03 : ils gardent la notification d'ajout et consomment les composables que vous allez écrire.
+Cette section est un **support** : chaque geste est une commande. Copiez d'abord les fichiers fournis dans l'application. Trois d'entre eux (la liste, la carte et la fiche d'un produit) **remplacent** ceux de l'étape 03 (dont la page de liste que vous avez réécrite en 02.7 ; copiez d'abord votre dossier `src` si vous voulez la garder) : ils gardent la notification d'ajout et consomment les composables que vous allez écrire.
 
 ```exec
 cp -R ~/byte-layers/vue/course/kit/steps/04/src/. ~/byte-layers/vue/shop/src/
@@ -208,7 +208,7 @@ Ouvrez `src/features/products/useProducts.ts`. Les types `ProductsParams` et `Us
 - `useCategories()` lit `fetchCategories` sous `productKeys.categories()`, avec `staleTime: Infinity`, et renvoie `{ categories }`, un tableau vide tant que la réponse n'est pas là.
 
 ```hint
-Importez `computed` et `toValue` de `vue`, `keepPreviousData` et `useQuery` de `@tanstack/vue-query`. `const key = computed(() => productKeys.list({ page: toValue(params.page), … }))` donne une clé réactive : passez-la à `useQuery({ queryKey: key, … })`. Les données se lisent avec `query.data.value`. `MaybeRefOrGetter` et `toValue` sont ceux de l'étape 02 : `toValue` lit indifféremment un nombre, un ref ou un getter.
+Importez `computed` et `toValue` de `vue`, `keepPreviousData` et `useQuery` de `@tanstack/vue-query`. `const key = computed(() => productKeys.list({ page: toValue(params.page), … }))` donne une clé réactive : passez-la à `useQuery({ queryKey: key, … })`. Les données se lisent avec `query.data.value`. `MaybeRefOrGetter` type un nombre, un ref ou un getter, et `toValue` les lit indifféremment.
 ```
 
 ```hint
@@ -486,9 +486,9 @@ Ouvrez la page `/products` à l'adresse que Vite affiche (`http://localhost:5173
 4. **Ajout optimiste.** Dans Network, choisissez le débit « 3G lente », puis cliquez sur « Ajouter au panier » : le badge du panier monte **immédiatement**, avant que `POST /carts/add` ait répondu. Pour provoquer l'échec, bloquez cette requête : dans les outils de développement de Chromium, ouvrez le panneau « Network request blocking » (menu des trois points, More tools), ajoutez le motif `*carts/add*` et activez le blocage ; dans Firefox, clic droit sur une requête puis « Bloquer l'URL ». Cliquez de nouveau sur « Ajouter au panier » : le badge monte, puis **redescend**, et un message « Ajout de … impossible, panier inchangé » apparaît : c'est le rollback.
 5. **Erreur.** Supprimez le motif précédent, ajoutez `*skip=24*` et cliquez sur « Aller à la page 3 » : après une nouvelle tentative, la liste est remplacée par une alerte d'erreur avec « Réessayer ». Retirez le motif et cliquez sur « Réessayer » : la liste revient.
 
-On bloque des URL plutôt que de passer en mode « Hors ligne » : avec le repli local de la section 01.5, ce mode coupe aussi `localhost` et rend tout inutilisable. Avec DummyJSON, le mode « Hors ligne » donne le même résultat que le blocage, grâce au réglage `networkMode: 'always'` de la section 04.7.
+On bloque des URL plutôt que de passer en mode « Hors ligne » : avec le repli local de la section 01.4, ce mode coupe aussi `localhost` et rend tout inutilisable. Avec DummyJSON, le mode « Hors ligne » donne le même résultat que le blocage, grâce au réglage `networkMode: 'always'` de la section 04.7.
 
-Remettez le débit sur « Sans limitation » et désactivez le blocage à la fin. Si DummyJSON n'est pas joignable depuis votre poste, utilisez le repli hors ligne de la section 01.5 : la démarche est la même.
+Remettez le débit sur « Sans limitation » et désactivez le blocage à la fin. Si DummyJSON n'est pas joignable depuis votre poste, utilisez le repli hors ligne de la section 01.4 : la démarche est la même.
 
 ```acknowledge
 J'ai vu la pagination, la recherche, le prefetch, l'ajout optimiste avec son rollback et l'état d'erreur

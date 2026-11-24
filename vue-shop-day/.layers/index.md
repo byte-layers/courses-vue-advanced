@@ -6,7 +6,7 @@ tags:
   - vue
   - typescript
 difficulty: advanced
-duration: 580
+duration: 620
 introTitle: "Le lab"
 requires: "0.4.0"
 options:
@@ -21,17 +21,17 @@ Le point de départ est une boutique de formation connue (Vite, Vuetify, routeur
 | Étape | Ce que vous faites | Durée |
 |---|---|---|
 | 01 | Installer le starter et le parcourir | 25 min |
-| 02 | Écrire `miniRef`, `miniComputed`, `miniWatchEffect`, puis un `customRef` de recherche | 50 min (+ 20 min facultatives) |
-| 03 | Composables, store Pinia, persistance, plugin, directive, authentification | 2 h |
+| 02 | Écrire `miniRef`, `miniComputed`, `miniWatchEffect`, puis un `customRef` de recherche | 60 min (+ 20 min facultatives) |
+| 03 | Composables, store Pinia, persistance, plugin, directive, authentification | 2 h 30 |
 | 04 | Le catalogue en cache avec TanStack Query, mise à jour optimiste | 70 min |
 | 05 | Enchères en temps réel avec socket.io | 90 min |
 | 06 | Composants génériques, Teleport, transitions | 80 min (+ 40 min pour l'option checkout) |
 | 07 | Mesurer les rendus, puis optimiser | 50 min |
 | 08 | Tests unitaires et d'intégration | 95 min (+ 25 min si vous écrivez tous les tests proposés) |
 
-Le total du cœur est d'environ **9 h 40**, soit une journée et demie. La durée affichée du lab est celle du cœur ; les parties facultatives s'y ajoutent.
+Le total du cœur est d'environ **10 h 20**, soit une journée et demie. La durée affichée du lab est celle du cœur ; les parties facultatives s'y ajoutent.
 
-**Pour tenir en une journée (environ 6 h 20)**, sautez deux étapes grâce aux états de rattrapage : jouez 01, 02, 04, 05, 07 et 08, et lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 03` avant l'étape 04, puis `sh ~/byte-layers/vue/course/kit/catch-up.sh 06` avant l'étape 07. Vous passez alors l'authentification, le plugin et la directive (étape 03) et les composants génériques (étape 06) : vous les retrouvez écrits, et vous pouvez les lire ou les jouer plus tard. L'autre découpage est deux demi-journées : les étapes 01 à 05 (environ 6 h 15), puis 06 à 08 (environ 3 h 45).
+**Pour tenir en une journée (environ 6 h 30)**, sautez deux étapes grâce aux états de rattrapage : jouez 01, 02, 04, 05, 07 et 08, et lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 03` avant l'étape 04, puis `sh ~/byte-layers/vue/course/kit/catch-up.sh 06` avant l'étape 07. Vous passez alors l'authentification, le plugin et la directive (étape 03) et les composants génériques (étape 06) : vous les retrouvez écrits, et vous pouvez les lire ou les jouer plus tard. L'autre découpage est deux demi-journées : les étapes 01 à 05 (environ 6 h 35), puis 06 à 08 (environ 3 h 45).
 
 **Niveau** : développeur web expérimenté, à l'aise en TypeScript, qui a déjà vu les fondamentaux de Vue (le tutoriel officiel, `create-vue`, Vuetify, le routage, Pinia en survol). Le texte est du Vue pur et va droit au but ; chaque notion nouvelle est dite avant la commande qui s'en sert.
 

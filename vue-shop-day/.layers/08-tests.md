@@ -32,15 +32,17 @@ Voici ce que vous venez de recevoir. Les cinq fichiers marqués « à écrire »
 | `test/mount-component.ts` | à écrire : le helper `mountWithApp` |
 | `test/mount-component.spec.ts` | fourni : les 8 tests qui valident votre helper |
 | `features/auctions/useBidRules.spec.ts` | à écrire : 8 `it.todo` (un composable) |
-| `features/cart/CartPage.spec.ts` | à écrire : 8 `it.todo` (un composant et ses stores) |
+| `features/cart/CartPage.spec.ts` | à écrire : 7 `it.todo` (un composant et ses stores) |
 | `router/navigation.spec.ts` | à écrire : 10 `it.todo` (le routeur et sa garde) |
 | `features/auctions/auctionFlow.spec.ts` | à écrire : 8 `it.todo` (le parcours d'enchère) |
-| `router/index.ts`, `vite.config.ts` | fournis, **remplacent les vôtres** : le routeur est le même, exposé par une fabrique ; la configuration garde le bloc `test.typecheck` de l'étape 06 et gagne un bloc `coverage` |
+| `router/index.ts`, `vite.config.ts` | fournis, **remplacent les vôtres** : le routeur est le même, exposé par une fabrique (la route `/checkout` n'y est ajoutée que si le dossier `features/checkout` de l'option de l'étape 06 existe : sans l'option, `/checkout` est une page introuvable) ; la configuration garde le bloc `test.typecheck` de l'étape 06 et gagne un bloc `coverage` |
 | `test/handlers.ts` | fourni : des handlers MSW réutilisables (section 08.10) |
 | `mutate.mjs` | fourni : le script de contrôle de la section 08.8 |
 | `E2E-SCENARIOS.md` | fourni : les cinq scénarios de la session de bout en bout (section 08.10) |
 
-Un `it.todo('…')` est un test **annoncé mais pas écrit** : Vitest l'affiche comme « todo » et sort avec un code 0. **`npm test` est donc vert sur un fichier vide** : on ne peut pas s'y fier pour savoir si vous avez écrit vos tests. Les titres des `it.todo` sont un plan, pas une obligation : vous pouvez en écrire d'autres, tant que chaque fichier compte au moins six tests et que le script de la section 08.8 est satisfait. La **couverture** de code, la mesure des lignes que les tests ont exécutées, est un autre indicateur : la section 08.9 la produit.
+Un `it.todo('…')` est un test **annoncé mais pas écrit** : Vitest l'affiche comme « todo » et sort avec un code 0. **`npm test` est donc vert sur un fichier vide** : on ne peut pas s'y fier pour savoir si vous avez écrit vos tests. Les titres des `it.todo` sont un plan : vous pouvez écrire d'autres tests, tant que chaque fichier compte au moins six tests. **Mais aucun `it.todo` ne doit rester** : chaque `verify` de l'étape et `mutate.mjs` les refusent. Remplacez ceux que vous écrivez, et **supprimez ceux que vous n'écrivez pas**. La **couverture** de code, la mesure des lignes que les tests ont exécutées, est un autre indicateur : la section 08.9 la produit.
+
+**Selon que vous avez fait ou non l'option checkout de l'étape 06**, deux choses changent dans cette étape : le test « Passer commande » de la page du panier n'a de sens qu'avec l'option (section 08.5), et les totaux de tests diffèrent (section 08.9). Le reste est identique : la garde de route se teste sur `/account`, qui existe dans les deux cas.
 
 Installez enfin les deux paquets de l'étape, en dépendances de développement et en version exacte : le premier fournit `createTestingPinia`, le second le rapport de couverture. La version de `@vitest/coverage-v8` doit être **exactement** celle de Vitest (5.1.1).
 
@@ -85,6 +87,7 @@ Le faux socket se pilote avec ces gestes, que vous retrouverez dans le parcours 
 |---|---|
 | `simulateConnect()` / `simulateDisconnect()` | le socket se connecte, ou le réseau tombe |
 | `serverEmit('auction:bid', makeBid({ … }))` | le serveur envoie un événement à l'application |
+| `emitted` | le tableau de tout ce que l'application a émis, dans l'ordre : `socket.emitted.length = 0` le vide avant une nouvelle observation |
 | `emittedOf('auction:bid')` / `last('auction:bid')` | ce que l'application a émis, et son dernier envoi ; ses paramètres sont dans `.args` (`last('auction:bid').args[0]` est la charge utile de l'offre) |
 | `last('auction:bid').ack?.({ ok: false, reason: 'outbid', price, version })` | le serveur répond à l'offre |
 | `last('auction:bid').timeout?.()` | le serveur ne répond pas à temps |
@@ -99,7 +102,7 @@ Un composable qui utilise `ref`, `computed` ou `inject` doit tourner **dans un c
 
 Ouvrez `src/features/auctions/useBidRules.spec.ts`. Ses huit `it.todo` sont le plan.
 
-**À vous** : écrivez au moins six des huit tests suivants (★ : celui que contrôle la section 08.8), puis retirez le commentaire d'introduction devenu inutile.
+**À vous** : écrivez au moins six des huit tests suivants (★ : celui que contrôle la section 08.8), supprimez les `it.todo` que vous n'écrivez pas, puis retirez le commentaire d'introduction devenu inutile.
 
 | Test | Ce qu'il faut asserter |
 |---|---|
@@ -242,7 +245,7 @@ Le plugin Vuetify est `import vuetify from '@/plugins/vuetify'`. Les plugins von
 ```
 
 ```hint
-Les imports du helper : `createTestQueryClient` de `./with-setup`, `createNotify` de `@/plugins/notify`, `vCountdown` de `@/directives/countdown`, `createAppRouter` de `@/router`, `auctionSocketKey` de `@/features/auctions/auctionSocket`, `createMemoryHistory` de `vue-router`, `createTestingPinia` de `@pinia/testing`, `vi` de `vitest`. Le faux socket vient de `createFakeSocket()` (`./fake-socket`) : l'objet rendu porte `socket`, le socket typé à fournir, et les gestes de pilotage. `mount` et `flushPromises` viennent de `@vue/test-utils`.
+Les imports du helper : `createTestQueryClient` de `./with-setup`, `createNotify` de `@/plugins/notify`, `vCountdown` de `@/directives/countdown`, `createAppRouter` de `@/router`, `auctionSocketKey` de `@/features/auctions/auctionSocket`, `createMemoryHistory` de `vue-router`, `createTestingPinia` de `@pinia/testing`, `VueQueryPlugin` de `@tanstack/vue-query`, `vi` de `vitest`. Le faux socket vient de `createFakeSocket()` (`./fake-socket`) : l'objet rendu porte `socket`, le socket typé à fournir, et les gestes de pilotage. `mount` et `flushPromises` viennent de `@vue/test-utils`.
 ```
 
 ````solution
@@ -327,7 +330,7 @@ Les imports : `mountWithApp` de `@/test/mount-component`, `useCartStore` de `./c
 
 Un point sur les montants : la page les formate avec `Intl.NumberFormat('fr-FR', …)`, qui place une **espace insécable** (U+00A0) avant le `€`. Un test écrit `toBe('55,00 €')` avec une espace normale échoue sans que rien ne le laisse deviner : cherchez `55,00` avec une expression régulière, ou comparez après `.replace(/\s/g, ' ')`.
 
-**À vous** : écrivez au moins six des huit tests suivants (★ : celui que contrôle la section 08.8).
+**À vous** : écrivez au moins six des tests suivants (★ : celui que contrôle la section 08.8 ; le dernier n'existe qu'avec l'option checkout), et supprimez les `it.todo` que vous n'écrivez pas.
 
 | Test | Ce qu'il faut asserter |
 |---|---|
@@ -338,7 +341,7 @@ Un point sur les montants : la page les formate avec `Intl.NumberFormat('fr-FR',
 | « − » | `cart-item-decrease` : `setQuantity` est appelé avec `(1, 1)` |
 | ★ la corbeille | avec les deux lignes, `cart-item-remove` de la **deuxième** : `cart.remove` est appelé **une fois**, avec `2` |
 | vider le panier | `cart-clear` : `cart.clear` est appelé une fois |
-| passer commande | `cart-checkout` a pour `href` `/checkout` |
+| passer commande (**avec l'option checkout seulement** : sans elle, la page n'a pas ce lien) | `cart-checkout` a pour `href` `/checkout` |
 
 ```hint
 Le test de la corbeille doit pouvoir **échouer** si on se trompe de ligne : cliquez sur la corbeille de la seconde, et vérifiez à la fois `toHaveBeenCalledTimes(1)` et `toHaveBeenCalledWith(2)`.
@@ -430,7 +433,7 @@ Deux pièges. **`router.push` est asynchrone** : lire la route avant d'avoir att
 
 Ouvrez `src/router/navigation.spec.ts`.
 
-**À vous** : écrivez au moins six des tests suivants (★ : celui que contrôle la section 08.8). Si les titres des `it.todo` en citent d'autres, ils sont facultatifs.
+**À vous** : écrivez au moins six des tests suivants (★ : celui que contrôle la section 08.8). Si les titres des `it.todo` en citent d'autres, écrivez-les ou supprimez-les : aucun `it.todo` ne doit rester.
 
 | Test | Ce qu'il faut asserter |
 |---|---|
@@ -534,7 +537,7 @@ Les sélecteurs (zones `auctions`, `auction-card` et `auction-modal` de `AGENTS.
 
 Ouvrez `src/features/auctions/auctionFlow.spec.ts`.
 
-**À vous** : écrivez d'abord deux fonctions d'aide, une qui amène la modale de l'iPhone à l'écran, une qui saisit un montant et envoie l'offre, puis au moins six des huit tests suivants (★ : ceux que contrôle la section 08.8).
+**À vous** : écrivez d'abord deux fonctions d'aide, une qui amène la modale de l'iPhone à l'écran, une qui saisit un montant et envoie l'offre, puis au moins six des huit tests suivants (★ : ceux que contrôle la section 08.8), en supprimant les `it.todo` que vous n'écrivez pas.
 
 | Test | Ce qu'il faut asserter |
 |---|---|
@@ -690,7 +693,7 @@ Quatre commandes disent si l'application est dans un état livrable. Le lab n'a 
 | `npm test` | Vitest, une seule passe : toute la suite |
 | `npm test -- --coverage` | les mêmes tests, avec un rapport de couverture (V8) : quelles lignes du code les tests ont exécutées |
 
-Le bouton ci-dessous lance les trois premières, dans l'ordre, et s'arrête à la première qui échoue (de l'ordre de la minute en tout). Sur la solution du kit, la suite compte 243 tests : les 201 d'avant, les 8 du helper et les 34 des quatre fichiers que vous écrivez. Avec six tests par fichier, votre total est d'au moins 233.
+Le bouton ci-dessous lance les trois premières, dans l'ordre, et s'arrête à la première qui échoue (de l'ordre de la minute en tout). Sur la solution du kit, la suite compte 244 tests **avec l'option checkout** (les 202 d'avant, les 8 du helper et les 34 des quatre fichiers que vous écrivez), et 231 sans elle (l'option compte 13 tests). Avec six tests par fichier, votre total est d'au moins 234 avec l'option, 221 sans.
 
 ```verify
 D=~/byte-layers/vue/shop
@@ -724,7 +727,7 @@ Les tests d'une autre hauteur, ceux d'un vrai navigateur qui parcourt l'applicat
 |---|---|
 | 1 | panier : ajout, quantité, suppression, total |
 | 2 | le panier survit au rechargement (`localStorage`, clé `shop.cart`), y compris stockage corrompu |
-| 3 | la commande est bloquée sans connexion, puis le formulaire de commande (option de l'étape 06) |
+| 3 | la connexion et la garde de route, en deux variantes : avec l'option de l'étape 06, la commande (`/checkout`) est bloquée sans connexion, puis le formulaire ; sans elle, la variante B vise `/account` |
 | 4 | enchère : un bot surenchérit (`POST /control/bot-bid`), l'annonce `aria-live` est émise |
 | 5 | enchère : le serveur refuse, l'offre optimiste est annulée de façon visible |
 

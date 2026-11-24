@@ -5,7 +5,9 @@ description: "Transformer le panier en store Pinia persistant, écrire un plugin
 
 La boutique a un panier qui fonctionne, mais fragile : il vit sous un composant fournisseur, il disparaît au rechargement et rien ne protège les pages réservées. Cette étape suit un seul fil : le panier devient un **store Pinia**, puis il est **persisté**, puis on ajoute ce qu'il faut pour qu'un utilisateur connecté puisse le retrouver, et plus tard le passer en caisse : un plugin de notifications, une directive de compte à rebours, une garde de route et un client http qui renouvelle le jeton d'accès sans se tromper. Vous écrivez cinq fichiers, avec des tests fournis, et vous modifiez une dizaine de fichiers de l'application pour que tout fonctionne dans le navigateur.
 
-**Durée** : c'est l'étape la plus dense du lab, **environ 2 heures** (comptez 2 h 30 si vous lisez chaque tableau « Avant / Après » en détail). Les sections 03.6 à 03.9 (plugin de notifications, directive de compte à rebours) sont indépendantes du panier et de l'authentification, mais la suite s'appuie sur elles : si vous prenez du retard, faites-les en vous aidant des solutions, puis consacrez votre temps à la persistance, à la garde et au client http.
+**Durée** : c'est l'étape la plus dense du lab, **environ 2 h 30** (comptez 3 h si vous lisez chaque tableau « Avant / Après » en détail). Les sections 03.6 à 03.9 (plugin de notifications, directive de compte à rebours) sont indépendantes du panier et de l'authentification, mais la suite s'appuie sur elles : si vous prenez du retard, faites-les en vous aidant des solutions, puis consacrez votre temps à la persistance, à la garde et au client http.
+
+> ⚠️ **Si vous avez sauté les parties facultatives de l'étape 02** (`miniReactive` et les trois pièges), lancez d'abord `sh ~/byte-layers/vue/course/kit/catch-up.sh 02` : il remet en place le moteur complet et ses fichiers, et la suite de tests de cette étape passera au vert.
 
 > 💡 **Si vous prenez du retard.** Pour repartir de l'état de fin de l'étape 02, lancez `sh ~/byte-layers/vue/course/kit/catch-up.sh 02` : le script copie le code attendu dans `~/byte-layers/vue/shop` et écrase vos fichiers du même nom, copiez d'abord votre dossier `src` ailleurs si vous voulez garder vos versions.
 
@@ -96,7 +98,7 @@ Pour choisir entre les quatre outils de partage, demandez-vous d'abord **qui a b
 | un état partagé par des pages sans lien entre elles, qui survit aux changements de route, à lire hors composant, à inspecter et à tester (panier, session) | un store Pinia |
 | un service installé une fois pour toute l'application (notifications, internationalisation) | un plugin, qui fait `app.provide` |
 
-Le panier et la session sont dans la troisième ligne, les notifications dans la quatrième. Un détail à retenir : un store est un objet `reactive`, donc ses `computed` s'utilisent **sans** `.value` (`cart.totalItems`), et si vous destructurez un store, passez par `storeToRefs(store)` pour garder la réactivité : c'est le même piège que `toRefs` à l'étape 02.
+Le panier et la session sont dans la troisième ligne, les notifications dans la quatrième. Un détail à retenir : un store est un objet `reactive`, donc ses `computed` s'utilisent **sans** `.value` (`cart.totalItems`), et si vous destructurez un store, passez par `storeToRefs(store)` pour garder la réactivité : c'est le même piège que `toRefs` (section 02.8, facultative : `toRefs` convertit chaque propriété d'un objet réactif en ref).
 
 > 📖 [Pinia : concepts](https://pinia.vuejs.org/core-concepts/) · [Vue : Provide / Inject](https://vuejs.org/guide/components/provide-inject.html) · [Vue : composables](https://vuejs.org/guide/reusability/composables.html)
 
@@ -166,7 +168,7 @@ Un panier qui disparaît au rechargement est une mauvaise surprise pour l'utilis
 
 Le point délicat est `loadCart`. Ce qu'on relit vient **de l'extérieur du code** : un autre onglet, une ancienne version de l'application, un utilisateur qui édite le stockage. Elle ne doit donc jamais lever d'exception, et ne doit jamais renvoyer une ligne mal formée qui ferait planter l'affichage. Même principe pour `saveCart` : un stockage plein ou bloqué (navigation privée) ne doit pas casser l'application, le panier reste alors en mémoire.
 
-Le déclencheur de la sauvegarde est un `watch` sur `items`. Un `watch` sur un `ref` de tableau ne se déclenche qu'au **remplacement** du tableau : `existing.quantity++` ne le réveille pas. Il faut l'option `{ deep: true }`, qui observe aussi les modifications internes (à l'étape 02, `shallowRef` supprimait cette profondeur ; ici on la demande explicitement).
+Le déclencheur de la sauvegarde est un `watch` sur `items`. Un `watch` sur un `ref` de tableau ne se déclenche qu'au **remplacement** du tableau : `existing.quantity++` ne le réveille pas. Il faut l'option `{ deep: true }`, qui observe aussi les modifications internes (à l'étape 02 (section 02.9, facultative), `shallowRef` supprimait cette profondeur ; ici on la demande explicitement).
 
 **À vous** : dans `cartStore.ts`, écrivez `loadCart` et `saveCart`, faites partir `items` de `loadCart()`, ajoutez le `watch`, puis supprimez la première ligne du fichier (le commentaire `eslint-disable` du squelette).
 
@@ -882,7 +884,7 @@ grep -q 'header-login' "$D/src/components/layout/AppHeader.vue" || { echo "AppHe
 echo "Le catalogue passe par le client unique, et la session est branchée."
 ```
 
-Vérifions dans le navigateur, le serveur de développement tournant toujours. Le repli hors ligne de la section 01.5 sert aussi ces routes d'authentification. Le compte de démonstration de DummyJSON est `emilys` avec le mot de passe `emilyspass`, prérempli sur la page de connexion.
+Vérifions dans le navigateur, le serveur de développement tournant toujours. Le repli hors ligne de la section 01.4 sert aussi ces routes d'authentification. Le compte de démonstration de DummyJSON est `emilys` avec le mot de passe `emilyspass`, prérempli sur la page de connexion.
 
 1. Ouvrez la page `/account` sans être connecté : le navigateur est redirigé vers `/login?redirect=/account`.
 2. Cliquez sur « Se connecter » : vous revenez sur `/account`, qui affiche `Emily Johnson`. L'en-tête montre votre prénom et « Déconnexion ».
