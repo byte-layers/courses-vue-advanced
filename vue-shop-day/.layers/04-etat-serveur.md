@@ -525,7 +525,7 @@ D=~/byte-layers/vue/shop
 echo "Type-check, lint et tests passent : l'application est dans l'état de fin d'étape 04."
 ```
 
-## 04.11 - Récap
+## Récap
 
 - L'**état serveur** (une copie de ce que détient l'API) vit dans le cache de TanStack Query ; l'**état client** (panier, session) reste dans Pinia.
 - La **clé** d'une requête contient tout ce dont elle dépend : changer la page ou la recherche refait l'appel, sans `watch`.

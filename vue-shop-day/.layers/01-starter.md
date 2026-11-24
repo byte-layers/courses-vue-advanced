@@ -20,7 +20,9 @@ Sous Windows, tapez les commandes dans le terminal **Git Bash**, livré avec Git
 
 Tout vit dans `~/byte-layers/vue` : `course` contient le dépôt du lab (le kit), `shop` contiendra votre application. Pour tout effacer à la fin de la journée, supprimez ce dossier.
 
-Vérifions d'abord l'outillage. Le premier bloc contrôle que Node a au moins la version 22 et que Git répond :
+## 01.1 - Vérifier Node et Git
+
+Ce premier contrôle vérifie que Node a au moins la version 22 et que Git répond :
 
 ```verify
 node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)' || { echo "Node $(node -v) est trop ancien : installez Node 22.22 ou plus récent."; exit 1; }
@@ -28,7 +30,7 @@ git --version >/dev/null 2>&1 || { echo "Git n'est pas installé : installez-le 
 echo "Node $(node -v) et Git sont disponibles."
 ```
 
-## 01.1 - Cloner le kit du lab
+## 01.2 - Cloner le kit du lab
 
 Le kit regroupe tout ce que le lab vous fournit : le starter (`kit/app`), les squelettes et les tests de chaque étape (`kit/steps`), l'état de fin de chaque étape pour se rattraper (`kit/solutions`) et le serveur du lab (`kit/server`). Clonez le dépôt dans `~/byte-layers/vue/course`, sauf si le dossier est déjà là :
 
@@ -46,11 +48,11 @@ Le kit regroupe tout ce que le lab vous fournit : le starter (`kit/app`), les sq
 
 ```verify
 C=~/byte-layers/vue/course
-[ -f "$C/kit/app/package.json" ] && [ -f "$C/kit/server/package.json" ] && [ -f "$C/kit/catch-up.sh" ] || { echo "Le kit n'est pas dans $C : relancez la commande de la section 01.1."; exit 1; }
+[ -f "$C/kit/app/package.json" ] && [ -f "$C/kit/server/package.json" ] && [ -f "$C/kit/catch-up.sh" ] || { echo "Le kit n'est pas dans $C : relancez la commande de la section 01.2."; exit 1; }
 echo "Le kit du lab est dans $C."
 ```
 
-## 01.2 - Copier le starter et installer ses dépendances
+## 01.3 - Copier le starter et installer ses dépendances
 
 Votre application ne doit pas vivre dans le clone : vous la modifierez toute la journée, et le clone doit rester intact pour les rattrapages. Copiez donc le starter dans `~/byte-layers/vue/shop`, qui devient votre projet :
 
@@ -76,12 +78,12 @@ cd ~/byte-layers/vue/shop && npm install
 
 ```verify
 D=~/byte-layers/vue/shop
-[ -f "$D/package.json" ] && [ -f "$D/src/main.ts" ] || { echo "Le starter n'est pas copié dans $D : relancez la première commande de la section 01.2."; exit 1; }
+[ -f "$D/package.json" ] && [ -f "$D/src/main.ts" ] || { echo "Le starter n'est pas copié dans $D : relancez la première commande de la section 01.3."; exit 1; }
 [ -d "$D/node_modules/vue" ] && [ -d "$D/node_modules/vuetify" ] || { echo "Les dépendances ne sont pas installées : lancez npm install dans $D."; exit 1; }
 echo "Le starter est copié et ses dépendances sont installées."
 ```
 
-## 01.3 - Lancer la boutique
+## 01.4 - Lancer la boutique
 
 Lancez le serveur de développement de Vite. Il reste ouvert : laissez ce terminal tourner, et ouvrez-en un autre pour la suite.
 
@@ -99,11 +101,11 @@ Deux accidents sont possibles au premier démarrage :
 - Si le port 5173 est déjà pris, Vite choisit 5174 sans insister : lisez l'adresse affichée dans le terminal, ou forcez le port avec `npm run dev -- --port 5173 --strictPort`.
 
 ```verify
-curl -fs http://localhost:5173/ | grep -q 'id="app"' || { echo "Rien ne répond sur http://localhost:5173 : lancez le bloc « Boutique (laisser tourner) » de la section 01.3 et laissez-le ouvert."; exit 1; }
+curl -fs http://localhost:5173/ | grep -q 'id="app"' || { echo "Rien ne répond sur http://localhost:5173 : lancez le bloc « Boutique (laisser tourner) » de la section 01.4 et laissez-le ouvert."; exit 1; }
 echo "La boutique répond sur http://localhost:5173."
 ```
 
-## 01.4 - Le serveur du lab, et le repli hors ligne
+## 01.5 - Le serveur du lab, et le repli hors ligne
 
 Par défaut, l'application interroge **DummyJSON** (https://dummyjson.com), une API publique de produits factices. Deux limites comptent pour la suite : elle exige du réseau, et elle ne retient rien (une écriture renvoie une réponse simulée, sans rien enregistrer ; l'étape 04 y revient). Le lab fournit donc un second serveur, dans `kit/server`, qui joue deux rôles sur le port **4310** :
 
@@ -127,7 +129,7 @@ cd ~/byte-layers/vue/course/kit/server && npm start
 Le terminal affiche `Serveur du lab sur http://localhost:4310` et la liste de ses adresses. Ces deux commandes sont aussi celles du repli : `api:local` désigne, dans ce lab, `cd ~/byte-layers/vue/course/kit/server && npm install && npm start`.
 
 ```verify
-curl -fs http://localhost:4310/health | grep -q '"status":"ok"' || { echo "Le serveur du lab ne répond pas sur le port 4310 : lancez le bloc « Serveur du lab (laisser tourner) » de la section 01.4 et laissez-le ouvert."; exit 1; }
+curl -fs http://localhost:4310/health | grep -q '"status":"ok"' || { echo "Le serveur du lab ne répond pas sur le port 4310 : lancez le bloc « Serveur du lab (laisser tourner) » de la section 01.5 et laissez-le ouvert."; exit 1; }
 curl -fs "http://localhost:4310/api/products?limit=1" | grep -q '"products"' || { echo "L'API de repli ne répond pas : relisez la sortie du terminal du serveur."; exit 1; }
 echo "Le serveur du lab répond, API de repli comprise."
 ```
@@ -142,7 +144,7 @@ Vite lit ses variables au démarrage : arrêtez `npm run dev` (Ctrl+C) et relanc
 
 📖 [Les variables d'environnement avec Vite](https://vite.dev/guide/env-and-mode).
 
-## 01.5 - Les conventions du projet : `AGENTS.md` et `data-testid`
+## 01.6 - Les conventions du projet : `AGENTS.md` et `data-testid`
 
 Le starter porte ses règles dans un fichier, `AGENTS.md`, à la racine du projet. Le format est lu par la plupart des assistants de code : un assistant que vous solliciterez dans la journée applique les mêmes règles que vous, sans que vous les répétiez. Ouvrez `~/byte-layers/vue/shop/AGENTS.md` dans votre éditeur et lisez-le en entier ; voici ce qu'il fixe.
 
@@ -164,7 +166,7 @@ Les `data-testid` méritent un mot de plus, parce que vous en poserez à chaque 
 
 La zone est le composant ou la page qui porte l'élément. Un élément répété (`cart-item`, `product-card`) se retrouve avec `getAllByTestId`. Un `data-testid` ne contient jamais de donnée : pas d'identifiant de produit dedans. Les étapes suivantes ouvrent leurs propres zones (`login-*`, `auction-*`…) sur le même modèle, et le texte vous dira lesquelles poser.
 
-## 01.6 - Visite : le catalogue chargé à la demande
+## 01.7 - Visite : le catalogue chargé à la demande
 
 Vous avez vu le catalogue tourner ; voyons comment il est branché. Le routeur (`src/router/index.ts`) ne déclare aucune page en dur : il assemble des tableaux de routes que chaque fonctionnalité exporte. Voici la route de la liste de produits, dans `src/features/products/routes.ts` :
 
@@ -196,7 +198,7 @@ Ce `fetch` nu a des défauts que vous verrez à l'œuvre : pas de cache, pas d'a
 
 📖 [Le chargement à la demande avec Vue Router](https://router.vuejs.org/guide/advanced/lazy-loading.html).
 
-## 01.7 - Visite : le panier en Provide/Inject
+## 01.8 - Visite : le panier en Provide/Inject
 
 Le panier est partagé par trois endroits qui ne sont pas parents les uns des autres : la carte de produit (pour ajouter), l'en-tête (pour la pastille) et la page du panier. Le starter le partage avec **Provide/Inject** : un composant ancêtre fournit une valeur, n'importe quel descendant l'injecte, sans passer par les props des composants intermédiaires. Trois fichiers de `src/features/cart/` font le travail.
 
@@ -237,7 +239,7 @@ Vitest annonce `Tests  2 passed (2)`.
 
 📖 [Provide / Inject](https://vuejs.org/guide/components/provide-inject.html).
 
-## 01.8 - Les Devtools de Vue
+## 01.9 - Les Devtools de Vue
 
 Installez l'extension **Vue Devtools** pour votre navigateur, en suivant [le guide d'installation](https://devtools.vuejs.org/guide/installation). Rechargez la boutique, ouvrez les outils du navigateur (F12) : un onglet **Vue** s'ajoute. Vous vous en servirez à plusieurs étapes, voici de quoi vous familiariser.
 
@@ -249,13 +251,13 @@ Les Devtools ne sont pas contrôlés par un `verify` : aucun test ne peut savoir
 
 📖 [Vue Devtools](https://devtools.vuejs.org/).
 
-## 01.9 - Vérifier que le starter se construit
+## 01.10 - Vérifier que le starter se construit
 
 Dernier contrôle, avant de plonger dans l'étape 02 : le projet, tel que vous l'avez copié, passe la vérification de types et se construit pour la production. Ce même contrôle vous servira de filet quand vous aurez modifié du code.
 
 ```verify
 D=~/byte-layers/vue/shop
-(cd "$D" && npm run build >/dev/null 2>&1) || { echo "La construction échoue : lancez npm run build dans $D et lisez la première erreur. Vous pouvez aussi repartir du starter avec les commandes de la section 01.2."; exit 1; }
+(cd "$D" && npm run build >/dev/null 2>&1) || { echo "La construction échoue : lancez npm run build dans $D et lisez la première erreur. Vous pouvez aussi repartir du starter avec les commandes de la section 01.3."; exit 1; }
 [ -f "$D/dist/index.html" ] || { echo "Le dossier dist n'a pas été produit : relancez npm run build."; exit 1; }
 echo "Le starter se construit : types et build de production passent."
 ```

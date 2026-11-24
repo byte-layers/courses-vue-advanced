@@ -548,7 +548,7 @@ D=~/byte-layers/vue/shop
 echo "Les 24 tests, la vérification de types et ESLint passent."
 ```
 
-## 02.12 - Récap
+## Récap
 
 - Vous avez écrit le cœur de la réactivité : un **effet actif**, `track` à la lecture, `trigger` à l'écriture, des dépendances recalculées à chaque exécution, des effets imbriqués, aucune boucle.
 - `ref` est un accesseur, `reactive` un Proxy, `computed` un effet à scheduler : paresseux et mis en cache parce qu'il se contente de se marquer sale.

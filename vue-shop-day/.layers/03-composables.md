@@ -900,7 +900,7 @@ D=~/byte-layers/vue/shop
 echo "Type-check, lint et tests passent : l'application est dans l'état de fin d'étape 03."
 ```
 
-## 03.14 - Récap
+## Récap
 
 - Le panier est passé du **Provide/Inject** à un **store Pinia** ; vous savez choisir entre composable, `provide`/`inject` avec une `InjectionKey` typée, store et plugin, d'après **qui a besoin de la valeur**.
 - Le panier est **persisté** : relu défensivement au démarrage, réécrit par un `watch` profond.
