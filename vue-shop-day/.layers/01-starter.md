@@ -262,7 +262,7 @@ D=~/byte-layers/vue/shop
 echo "Le starter se construit : types et build de production passent."
 ```
 
-## 01.10 - Récap
+## Récap
 
 - Le kit est cloné dans `~/byte-layers/vue/course`, votre application est dans `~/byte-layers/vue/shop`, avec ses dépendances installées.
 - La boutique tourne sur le port 5173 ; l'API est DummyJSON, ou le serveur du lab sur le port 4310 si le réseau manque (`.env.local`, puis relancer Vite).
